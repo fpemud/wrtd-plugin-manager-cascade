@@ -2,18 +2,15 @@
 # -*- coding: utf-8; tab-width: 4; indent-tabs-mode: t -*-
 
 import os
-import pwd
-import grp
-import time
+import re
+import json
+import signal
 import socket
 import logging
-import netifaces
-import ipaddress
-import threading
-import subprocess
-from gi.repository import GLib
-from gi.repository import GObject
+import pyroute2
+from gi.repository import Gio
 from . import util
+from .util import JsonApiEndPoint
 
 
 def get_plugin_list():
