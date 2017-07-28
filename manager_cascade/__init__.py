@@ -51,7 +51,7 @@ class _PluginObject:
                 self.logger.info("CASCADE-VPN activated, plugin: %s." % (cfgObj["plugin"]))
             else:
                 self.logger.info("No CASCADE-VPN configured.")
-        except BaseException:
+        except:
             if self.vpnPlugin is not None:
                 self.vpnPlugin = None
                 self.logger.info("CASCADE-VPN deactivated.")
@@ -62,11 +62,11 @@ class _PluginObject:
         self.routerInfo[self.param.uuid]["hostname"] = socket.gethostname()
         if self.vpnPlugin is not None:
             self.routerInfo[self.param.uuid]["cascade-vpn"] = dict()
-        if self.param.wanManager.wanConnPlugin is not None:
+        if self.param.wan_manager.wanConnPlugin is not None:
             self.routerInfo[self.param.uuid]["wan-prefix-list"] = []
         if True:
             self.routerInfo[self.param.uuid]["lan-prefix-list"] = []
-            for bridge in [self.param.lanManager.defaultBridge] + [x.get_bridge() for x in self.param.lanManager.vpnsPluginList]:
+            for bridge in [self.param.lan_manager.defaultBridge] + [x.get_bridge() for x in self.param.lan_manager.vpnsPluginList]:
                 prefix = bridge.get_prefix()
                 self.routerInfo[self.param.uuid]["lan-prefix-list"].append(prefix[0] + "/" + prefix[1])
         self.routerInfo[self.param.uuid]["client-list"] = dict()
@@ -82,7 +82,7 @@ class _PluginObject:
         self.banUuidList = []
 
         # start CASCADE-API server for all the bridges
-        for plugin in self.param.lanManager.vpnsPluginList:
+        for plugin in self.param.lan_manager.vpnsPluginList:
             self.apiServerList.append(_ApiServer(self, plugin.get_bridge()))
         self.logger.info("CASCADE-API servers started.")
 
@@ -122,7 +122,7 @@ class _PluginObject:
         return ret
 
     def on_wconn_up(self):
-        self._wanPrefixListChange(self.param.wanManager.wanConnPlugin.get_prefix_list())
+        self._wanPrefixListChange(self.param.wan_manager.wanConnPlugin.get_prefix_list())
         if self.vpnPlugin is not None:
             self.vpnPlugin.start()
 
@@ -133,7 +133,7 @@ class _PluginObject:
 
     def on_wvpn_up(self):
         # check vpn prefix
-        if util.prefixListConflict(self.vpnPlugin.get_prefix_list(), self.param.wanManager.wanConnPlugin.get_prefix_list()):
+        if util.prefixListConflict(self.vpnPlugin.get_prefix_list(), self.param.wan_manager.wanConnPlugin.get_prefix_list()):
             raise Exception("cascade-VPN prefix duplicates with internet connection")
         if self.param.prefixPool.setExcludePrefixList("vpn", self.vpnPlugin.get_prefix_list()):
             os.kill(os.getpid(), signal.SIGHUP)
@@ -203,7 +203,7 @@ class _PluginObject:
     def on_cascade_upstream_up(self, api_client, data):
         self.banUuidList = []
         self.routesDict[api_client.get_peer_ip()] = dict()
-        self.param.lanManager.add_source("upstream-vpn")
+        self.param.lan_manager.add_source("upstream-vpn")
         self.on_cascade_upstream_router_add(api_client, data["router-list"])
 
     def on_cascade_upstream_fail(self, api_client, excp):
@@ -212,7 +212,7 @@ class _PluginObject:
     def on_cascade_upstream_down(self, api_client):
         if api_client.routerInfo is not None and len(api_client.routerInfo) > 0:
             self.on_cascade_upstream_router_remove(api_client, api_client.routerInfo.keys())
-        self.param.lanManager.remove_source("upstream-vpn")
+        self.param.lan_manager.remove_source("upstream-vpn")
         if True:
             for router_id in api_client.get_router_info():
                 self._removeRoutes(api_client.get_peer_ip(), router_id)
@@ -321,8 +321,8 @@ class _PluginObject:
             if "lan-prefix-list" in data[router_id]:
                 self._updateRoutes(sproc.get_peer_ip(), router_id, data[router_id]["lan-prefix-list"])
             if "client-list" in router_info:
-                self.param.lanManager.add_source("downstream-" + router_id)
-                self.param.lanManager.add_client("downstream-" + router_id, router_info["client-list"])
+                self.param.lan_manager.add_source("downstream-" + router_id)
+                self.param.lan_manager.add_client("downstream-" + router_id, router_info["client-list"])
 
         # notify upstream and other downstream
         if self.hasValidApiClient():
@@ -333,7 +333,7 @@ class _PluginObject:
     def on_cascade_downstream_router_remove(self, sproc, data):
         # process by myself
         for router_id in data:
-            self.param.lanManager.remove_source("downstream-" + router_id)
+            self.param.lan_manager.remove_source("downstream-" + router_id)
             self._removeRoutes(sproc.get_peer_ip(), router_id)
             self.param.prefixPool.removeExcludePrefixList("downstream-wan-%s" % (router_id))
 
@@ -367,7 +367,7 @@ class _PluginObject:
     def on_cascade_downstream_router_client_add(self, sproc, data):
         # process by myself
         for router_id, router_info in data.items():
-            self.param.lanManager.add_client("downstream-" + router_id, router_info["client-list"])
+            self.param.lan_manager.add_client("downstream-" + router_id, router_info["client-list"])
 
         # notify upstream and other downstream
         if self.hasValidApiClient():
@@ -378,7 +378,7 @@ class _PluginObject:
     def on_cascade_downstream_router_client_change(self, sproc, data):
         # process by myself
         for router_id, router_info in data.items():
-            self.param.lanManager.change_client("downstream-" + router_id, router_info["client-list"])
+            self.param.lan_manager.change_client("downstream-" + router_id, router_info["client-list"])
 
         # notify upstream and other downstream
         if self.hasValidApiClient():
@@ -389,7 +389,7 @@ class _PluginObject:
     def on_cascade_downstream_router_client_remove(self, sproc, data):
         # process by myself
         for router_id, router_info in data.items():
-            self.param.lanManager.remove_client("downstream-" + router_id, router_info["client-list"])
+            self.param.lan_manager.remove_client("downstream-" + router_id, router_info["client-list"])
 
         # notify upstream and other downstream
         if self.hasValidApiClient():
@@ -438,7 +438,7 @@ class _PluginObject:
                 continue                # called by on_cascade_upstream_router_add()
             if router_id == api_client.get_peer_uuid():
                 tlist = list(data[router_id]["lan-prefix-list"])
-                for prefix in self.param.wanManager.vpnPlugin.get_prefix_list():
+                for prefix in self.param.wan_manager.vpnPlugin.get_prefix_list():
                     tlist.remove(prefix[0] + "/" + prefix[1])
             else:
                 tlist = data[router_id]["lan-prefix-list"]
@@ -466,7 +466,7 @@ class _PluginObject:
         if self.hasValidApiClient():
             curUpstreamId = api_client.get_peer_uuid()
             curUpstreamIp = api_client.get_peer_ip()
-            curUpstreamLocalIp = self.param.wanManager.vpnPlugin.get_local_ip()
+            curUpstreamLocalIp = self.param.wan_manager.vpnPlugin.get_local_ip()
             while True:
                 data = api_client.get_router_info()[curUpstreamId]
 
@@ -490,7 +490,7 @@ class _PluginObject:
                     ipDataDict[ip] = data
 
         # refresh to all bridges
-        self.param.lanManager.refresh_client("upstream-vpn")
+        self.param.lan_manager.refresh_client("upstream-vpn")
 
     def _apiClientCanNotify(self):
         return self.apiClient is not None and self.apiClient.bConnected
