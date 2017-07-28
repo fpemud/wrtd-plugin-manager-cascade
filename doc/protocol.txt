@@ -1,0 +1,223 @@
+################################################################################
+# client2server: command: register
+################################################################################
+#
+# Request:
+# {
+#     "command": "register",
+#     "data": {
+#         "my-id": "c5facfa6-d8c3-4bce-ac13-6abab49c86fc",
+#         "router-list": {
+#             "c5facfa6-d8c3-4bce-ac13-6abab49c86fc": {
+#                 "parent": "c6f7cdad-d2ce-3478-cabc-a3b5445bdfee",
+#                 "hostname": "abc",
+#                 "wan-prefix-list": ["192.168.0.0/255.255.255.0", "192.168.1.0/255.255.255.0"],
+#                 "lan-prefix-list": ["192.168.2.0/255.255.255.0", "192.168.3.0/255.255.255.0"],
+#                 "client-list": {
+#                     "1.2.3.4": {
+#                         "hostname": "abcd",
+#                         "wakeup-mac": "01-02-03-04-05-06",
+#                     },
+#                 },
+#             },
+#         },
+#     },
+# }
+# Response:
+# {
+#     "return": {
+#         "my-id": "c5facfa6-d8c3-4bce-ac13-6abab49c86fc",
+#         "router-list": {
+#             "c5facfa6-d8c3-4bce-ac13-6abab49c86fc": {
+#                 "parent": "c6f7cdad-d2ce-3478-cabc-a3b5445bdfee",
+#                 "cascade-vpn": {
+#                     "loca1-ip": "1.2.3.4",
+#                     "remote-ip": "2.3.4.5",
+#                 },
+#                 "wan-prefix-list": ["192.168.0.0/255.255.255.0", "192.168.1.0/255.255.255.0"],
+#                 "lan-prefix-list": ["192.168.2.0/255.255.255.0", "192.168.3.0/255.255.255.0"],
+#                 "client-list": {
+#                     "1.2.3.4": {
+#                         "hostname": "abcd",
+#                         "wakeup-mac": "01-02-03-04-05-06",
+#                     },
+#                 },
+#             },
+#         },
+#     },
+# }
+#
+################################################################################
+# client2server: notification: router-add
+################################################################################
+#
+# {
+#     "notification": "router-add",
+#     "data": {
+#         "c5facfa6-d8c3-4bce-ac13-6abab49c86fc": {
+#             "parent": "c6f7cdad-d2ce-3478-cabc-a3b5445bdfee",
+#             "wan-prefix-list": ["192.168.0.0/255.255.255.0", "192.168.1.0/255.255.255.0"],
+#             "lan-prefix-list": ["192.168.2.0/255.255.255.0", "192.168.3.0/255.255.255.0"],
+#             "client-list": {
+#                 "1.2.3.4": {
+#                     "hostname": "abcd",
+#                     "wakeup-mac": "01-02-03-04-05-06",
+#                 },
+#             },
+#         },
+#     },
+# }
+#
+################################################################################
+# client2server: notification: router-remove
+################################################################################
+#
+# {
+#     "notification": "router-remove",
+#     "data": [
+#         "c5facfa6-d8c3-4bce-ac13-6abab49c86fc",
+#     ],
+# }
+#
+################################################################################
+# client2server: notification: router-wan-prefix-list-change
+################################################################################
+#
+# {
+#     "notification": "router-wan-prefix-list-change",
+#     "data": {
+#         "c5facfa6-d8c3-4bce-ac13-6abab49c86fc" : {
+#             "wan-prefix-list": ["192.168.0.0/255.255.255.0", "192.168.1.0/255.255.255.0"],
+#         }
+#     },
+# }
+#
+################################################################################
+# client2server: notification: router-lan-prefix-list-change
+################################################################################
+#
+# {
+#     "notification": "router-lan-prefix-list-change",
+#     "data": {
+#         "c5facfa6-d8c3-4bce-ac13-6abab49c86fc" : {
+#             "lan-prefix-list": ["192.168.0.0/255.255.255.0", "192.168.1.0/255.255.255.0"],
+#         }
+#     },
+# }
+#
+################################################################################
+# client2server: notification: router-client-add
+################################################################################
+#
+# {
+#     "notification": "router-client-add",
+#     "data": {
+#         "c5facfa6-d8c3-4bce-ac13-6abab49c86fc" : {
+#             "client-list": {
+#                 "1.2.3.4": {
+#                     "hostname": "abcd",
+#                     "wakeup-mac": "01-02-03-04-05-06",
+#                 },
+#             },
+#         ],
+#     },
+# }
+#
+################################################################################
+# client2server: notification: router-client-change
+################################################################################
+#
+# {
+#     "notification": "router-client-change",
+#     "data": {
+#         "c5facfa6-d8c3-4bce-ac13-6abab49c86fc" : {
+#             "client-list": {
+#                 "1.2.3.4": {
+#                     "hostname": "abcd",
+#                     "wakeup-mac": "01-02-03-04-05-06",
+#                 },
+#             },
+#         ],
+#     },
+# }
+#
+################################################################################
+# client2server: notification: router-client-remove
+################################################################################
+#
+# {
+#     "notification": "router-client-remove",
+#     "data": {
+#         "c5facfa6-d8c3-4bce-ac13-6abab49c86fc" : {
+#             "client-list": [
+#                 "1.2.3.4",
+#             ],
+#         },
+#     },
+# }
+#
+################################################################################
+# server2client: notification: router-add
+################################################################################
+#
+# same as client2server: notification: router-add
+#
+#
+################################################################################
+# server2client: notification: router-remove
+################################################################################
+#
+# same as client2server: notification: router-remove
+#
+#
+################################################################################
+# server2client: notification: router-cascade-vpn-change
+################################################################################
+#
+# {
+#     "notification": "router-cascade-vpn-change",
+#     "data": {
+#         "c5facfa6-d8c3-4bce-ac13-6abab49c86fc" : {
+#             "cascade-vpn": {
+#                 "loca1-ip": "1.2.3.4",
+#                 "remote-ip": "2.3.4.5",
+#             },
+#         },
+#     },
+# }
+#
+################################################################################
+# server2client: notification: router-wan-prefix-list-change
+################################################################################
+#
+# same as client2server: notification: router-wan-prefix-list-change
+#
+#
+################################################################################
+# server2client: notification: router-lan-prefix-list-change
+################################################################################
+#
+# same as client2server: notification: router-lan-prefix-list-change
+#
+#
+################################################################################
+# server2client: notification: router-client-add
+################################################################################
+#
+# same as client2server: notification: router-client-add
+#
+#
+################################################################################
+# server2client: notification: router-client-change
+################################################################################
+#
+# same as client2server: notification: router-client-change
+#
+#
+################################################################################
+# server2client: notification: router-client-remove
+################################################################################
+#
+# same as client2server: notification: router-client-remove
+#
+#
