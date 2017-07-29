@@ -561,7 +561,7 @@ class _ApiClient(JsonApiEndPoint):
         sc.set_family(Gio.SocketFamily.IPV4)
         sc.set_protocol(Gio.SocketProtocol.TCP)
 
-        self.logger.info("Establishing CASCADE-API connection.")
+        self.pObj.logger.info("Establishing CASCADE-API connection.")
         self.peerUuid = None
         self.routerInfo = None
         self.bConnected = False
@@ -595,7 +595,7 @@ class _ApiClient(JsonApiEndPoint):
 
             self.bConnected = True
         except Exception as e:
-            self.logger.error("Failed to establish CASCADE-API connection", exc_info=True)   # fixme
+            self.pObj.logger.error("Failed to establish CASCADE-API connection", exc_info=True)   # fixme
             self.pObj.param.manager_caller.call("on_cascade_upstream_fail", self, e)
             self.close()
 
@@ -603,8 +603,8 @@ class _ApiClient(JsonApiEndPoint):
         self.peerUuid = data["my-id"]
         self.routerInfo = data["router-list"]
         self.bRegistered = True
-        self.logger.info("CASCADE-API connection established.")
-        _Helper.logRouterAdd(self.routerInfo, self.logger)
+        self.pObj.logger.info("CASCADE-API connection established.")
+        _Helper.logRouterAdd(self.routerInfo, self.pObj.logger)
         self.pObj.param.manager_caller.call("on_cascade_upstream_up", self, data)
 
     def _on_register_error(self, reason):
@@ -618,10 +618,10 @@ class _ApiClient(JsonApiEndPoint):
 
     def on_error(self, excp):
         if not self.bRegistered:
-            self.logger.error("Failed to establish CASCADE-API connection.", exc_info=True)      # fixme
+            self.pObj.logger.error("Failed to establish CASCADE-API connection.", exc_info=True)      # fixme
             self.pObj.param.manager_caller.call("on_cascade_upstream_fail", self, excp)
         else:
-            self.logger.error("CASCADE-API connection disconnected with error.", exc_info=True)  # fixme
+            self.pObj.logger.error("CASCADE-API connection disconnected with error.", exc_info=True)  # fixme
             self.pObj.param.manager_caller.call("on_cascade_upstream_error", self, excp)
 
     def on_close(self):
@@ -629,7 +629,7 @@ class _ApiClient(JsonApiEndPoint):
             pass
         else:
             self.pObj.param.manager_caller.call("on_cascade_upstream_down", self)
-            _Helper.logRouterRemoveAll(self.routerInfo, self.logger)
+            _Helper.logRouterRemoveAll(self.routerInfo, self.pObj.logger)
 
     def on_notification_router_add(self, data):
         assert self.bRegistered
@@ -643,13 +643,13 @@ class _ApiClient(JsonApiEndPoint):
             raise Exception("UUID %s duplicate" % (uuid))
 
         self.routerInfo.update(data)
-        _Helper.logRouterAdd(data, self.logger)
+        _Helper.logRouterAdd(data, self.pObj.logger)
         self.pObj.param.manager_caller.call("on_cascade_upstream_router_add", self, data)
 
     def on_notification_router_remove(self, data):
         assert self.bRegistered
         self.pObj.param.manager_caller.call("on_cascade_upstream_router_remove", self, data)
-        _Helper.logRouterRemove(data, self.routerInfo, self.logger)
+        _Helper.logRouterRemove(data, self.routerInfo, self.pObj.logger)
         for router_id in data:
             del self.routerInfo[router_id]
 
@@ -675,7 +675,7 @@ class _ApiClient(JsonApiEndPoint):
         assert self.bRegistered
         for router_id, item in data.items():
             self.routerInfo[router_id]["client-list"].update(item["client-list"])
-        _Helper.logRouterClientAdd(data, self.logger)
+        _Helper.logRouterClientAdd(data, self.pObj.logger)
         self.pObj.param.manager_caller.call("on_cascade_upstream_router_client_add", self, data)
 
     def on_notification_router_client_change(self, data):
@@ -688,7 +688,7 @@ class _ApiClient(JsonApiEndPoint):
     def on_notification_router_client_remove(self, data):
         assert self.bRegistered
         self.pObj.param.manager_caller.call("on_cascade_upstream_router_client_remove", self, data)
-        _Helper.logRouterClientRemove(data, self.routerInfo, self.logger)
+        _Helper.logRouterClientRemove(data, self.routerInfo, self.pObj.logger)
         for router_id, item in data.items():
             for ip in item["client-list"]:
                 del self.routerInfo[router_id]["client-list"][ip]
@@ -715,7 +715,7 @@ class _ApiServer:
         conn, dummy = source_object.accept_finish(res)
         sproc = _ApiServerProcessor(self.pObj, self, conn)
         self.sprocList.append(sproc)
-        self.logger.info("CASCADE-API client %s accepted." % (conn.get_remote_address().get_address().to_string()))
+        self.pObj.logger.info("CASCADE-API client %s accepted." % (conn.get_remote_address().get_address().to_string()))
         self.serverListener.accept_async(None, self._on_accept)
 
 
@@ -741,16 +741,16 @@ class _ApiServerProcessor(JsonApiEndPoint):
         return self.routerInfo
 
     def on_error(self, e):
-        self.logger.error("debugXXXXXXXXXXXX", exc_info=True)            # fixme
+        self.pObj.logger.error("debugXXXXXXXXXXXX", exc_info=True)            # fixme
 
     def on_close(self):
         if self.bRegistered:
             self.pObj.param.manager_caller.call("on_cascade_downstream_down", self)
             if self.peerUuid is not None:
-                _Helper.logRouterRemoveAll(self.routerInfo, self.logger)
+                _Helper.logRouterRemoveAll(self.routerInfo, self.pObj.logger)
         self.routerInfo = None
         self.peerUuid = None
-        self.logger.info("CASCADE-API client %s disconnected." % (self.get_peer_ip()))
+        self.pObj.logger.info("CASCADE-API client %s disconnected." % (self.get_peer_ip()))
         self.serverObj.sprocList.remove(self)
 
     def on_command_register(self, data, return_callback, error_callback):
@@ -758,7 +758,7 @@ class _ApiServerProcessor(JsonApiEndPoint):
         if "my-id" in data:
             uuid = _Helper.downStreamRouterIdDuplicityCheck(self.pObj.param, data["router-list"])
             if uuid is not None:
-                self.logger.error("CASCADE-API client %s rejected, UUID %s duplicate." % (self.get_peer_ip(), uuid))
+                self.pObj.logger.error("CASCADE-API client %s rejected, UUID %s duplicate." % (self.get_peer_ip(), uuid))
                 error_callback("UUID %s duplicate" % (uuid))
                 # no need to actively close connection, client would close it
                 return
@@ -784,9 +784,9 @@ class _ApiServerProcessor(JsonApiEndPoint):
 
         # registered
         self.bRegistered = True
-        self.logger.info("CASCADE-API client %s registered." % (self.get_peer_ip()))
+        self.pObj.logger.info("CASCADE-API client %s registered." % (self.get_peer_ip()))
         if self.peerUuid is not None:
-            _Helper.logRouterAdd(self.routerInfo, self.logger)
+            _Helper.logRouterAdd(self.routerInfo, self.pObj.logger)
         self.pObj.param.manager_caller.call("on_cascade_downstream_up", self, data)
 
     def on_notification_router_add(self, data):
@@ -797,14 +797,14 @@ class _ApiServerProcessor(JsonApiEndPoint):
             raise Exception("UUID %s duplicate" % (uuid))
 
         self.routerInfo.update(data)
-        _Helper.logRouterAdd(data, self.logger)
+        _Helper.logRouterAdd(data, self.pObj.logger)
         self.pObj.param.manager_caller.call("on_cascade_downstream_router_add", self, data)
 
     def on_notification_router_remove(self, data):
         assert self.bRegistered and self.peerUuid is not None
 
         self.pObj.param.manager_caller.call("on_cascade_downstream_router_remove", self, data)
-        _Helper.logRouterRemove(data, self.routerInfo, self.logger)
+        _Helper.logRouterRemove(data, self.routerInfo, self.pObj.logger)
         for router_id in data:
             del self.routerInfo[router_id]
 
@@ -827,7 +827,7 @@ class _ApiServerProcessor(JsonApiEndPoint):
 
         for router_id, item in data.items():
             self.routerInfo[router_id]["client-list"].update(item["client-list"])
-        _Helper.logRouterClientAdd(data, self.logger)
+        _Helper.logRouterClientAdd(data, self.pObj.logger)
         self.pObj.param.manager_caller.call("on_cascade_downstream_router_client_add", self, data)
 
     def on_notification_router_client_change(self, data):
@@ -842,7 +842,7 @@ class _ApiServerProcessor(JsonApiEndPoint):
         assert self.bRegistered and self.peerUuid is not None
 
         self.pObj.param.manager_caller.call("on_cascade_downstream_router_client_remove", self, data)
-        _Helper.logRouterClientRemove(data, self.routerInfo, self.logger)
+        _Helper.logRouterClientRemove(data, self.routerInfo, self.pObj.logger)
         for router_id, item in data.items():
             for ip in item["client-list"]:
                 del self.routerInfo[router_id]["client-list"][ip]
