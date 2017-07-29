@@ -513,7 +513,7 @@ class _PluginObject:
                     ipDataDict[ip] = data
 
         # refresh to all bridges
-        self.param.lan_manager.refresh_client("upstream-vpn")
+        self.param.lan_manager.refresh_client("upstream-vpn", ipDataDict)
 
     def _apiClientCanNotify(self):
         return self.apiClient is not None and self.apiClient.bConnected
