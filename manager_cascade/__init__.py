@@ -860,12 +860,12 @@ class _ApiServerProcessor(JsonApiEndPoint):
     def _downStreamRouterIdDuplicityCheck(self, data):
         if self.pObj.param.uuid in data:
             return self.pObj.param.uuid
-        if self.pObj.param.cascadeManager.hasValidApiClient():
-            ret = set(self.pObj.param.cascadeManager.apiClient.get_router_info()) & set(data.keys())
+        if self.pObj.hasValidApiClient():
+            ret = set(self.pObj.apiClient.get_router_info()) & set(data.keys())
             ret = list(ret)
             if len(ret) > 0:
                 return ret[0]
-        for sproc in self.pObj.param.cascadeManager.getAllRouterApiServerProcessors():
+        for sproc in self.pObj.getAllRouterApiServerProcessors():
             ret = set(sproc.get_router_info().keys()) & set(data.keys())
             ret = list(ret)
             if len(ret) > 0:
