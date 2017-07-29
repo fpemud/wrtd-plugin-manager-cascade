@@ -461,7 +461,7 @@ class _PluginObject:
                 continue                # called by on_cascade_upstream_router_add()
             if router_id == api_client.get_peer_uuid():
                 tlist = list(data[router_id]["lan-prefix-list"])
-                for prefix in self.param.wan_manager.vpnPlugin.get_prefix_list():
+                for prefix in self.vpnPlugin.get_prefix_list():
                     tlist.remove(prefix[0] + "/" + prefix[1])
             else:
                 tlist = data[router_id]["lan-prefix-list"]
@@ -489,7 +489,7 @@ class _PluginObject:
         if self.hasValidApiClient():
             curUpstreamId = api_client.get_peer_uuid()
             curUpstreamIp = api_client.get_peer_ip()
-            curUpstreamLocalIp = self.param.wan_manager.vpnPlugin.get_local_ip()
+            curUpstreamLocalIp = self.vpnPlugin.get_local_ip()
             while True:
                 data = api_client.get_router_info()[curUpstreamId]
 
