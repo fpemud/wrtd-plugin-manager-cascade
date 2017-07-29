@@ -48,7 +48,7 @@ class _PluginObject:
                 cfgObj = None
                 with open(cfgfile, "r") as f:
                     cfgObj = json.load(f)
-                self.vpnPlugin = self.param.pluginHub.getPlugin("wvpn", cfgObj["plugin"])
+                self.vpnPlugin = self.param.plugin_hub.getPlugin("wvpn", cfgObj["plugin"])
                 tdir = os.path.join(self.param.tmpDir, "wvpn-%s" % (cfgObj["plugin"]))
                 os.mkdir(tdir)
                 self.vpnPlugin.init2(cfgObj,
