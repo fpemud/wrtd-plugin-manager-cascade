@@ -122,6 +122,9 @@ class _PluginObject:
 
         return ret
 
+    def manager_appear(self, name, manager):
+        pass
+
     def hasValidApiClient(self):
         return self.apiClient is not None and self.apiClient.bRegistered
 
