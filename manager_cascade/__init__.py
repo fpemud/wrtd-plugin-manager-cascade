@@ -31,9 +31,18 @@ class _PluginObject:
         self.param = data
         self.logger = logging.getLogger(self.__module__ + "." + self.__class__.__name__)
 
-        # cascade-vpn plugin
+        self.routerInfo = dict()
+
         self.vpnPlugin = None
+
+        self.routesDict = dict()            # dict<gateway-ip, dict<router-id, list<prefix>>>
+
+        self.apiClient = None
+        self.apiServerList = []
+        self.banUuidList = []
+
         try:
+            # cascade-vpn plugin
             cfgfile = os.path.join(self.param.etcDir, "cascade-vpn.json")
             if os.path.exists(cfgfile):
                 cfgObj = None
@@ -49,40 +58,28 @@ class _PluginObject:
                 self.logger.info("CASCADE-VPN activated, plugin: %s." % (cfgObj["plugin"]))
             else:
                 self.logger.info("No CASCADE-VPN configured.")
-        except:
+
+            # router info
+            self.routerInfo[self.param.uuid] = dict()
+            self.routerInfo[self.param.uuid]["hostname"] = socket.gethostname()
             if self.vpnPlugin is not None:
-                self.vpnPlugin = None
-                self.logger.info("CASCADE-VPN deactivated.")
+                self.routerInfo[self.param.uuid]["cascade-vpn"] = dict()
+            if self.param.wan_manager.wanConnPlugin is not None:
+                self.routerInfo[self.param.uuid]["wan-prefix-list"] = []
+            if True:
+                self.routerInfo[self.param.uuid]["lan-prefix-list"] = []
+                for bridge in [self.param.lan_manager.defaultBridge] + [x.get_bridge() for x in self.param.lan_manager.vpnsPluginList]:
+                    prefix = bridge.get_prefix()
+                    self.routerInfo[self.param.uuid]["lan-prefix-list"].append(prefix[0] + "/" + prefix[1])
+            self.routerInfo[self.param.uuid]["client-list"] = dict()
 
-        # router info
-        self.routerInfo = dict()
-        self.routerInfo[self.param.uuid] = dict()
-        self.routerInfo[self.param.uuid]["hostname"] = socket.gethostname()
-        if self.vpnPlugin is not None:
-            self.routerInfo[self.param.uuid]["cascade-vpn"] = dict()
-        if self.param.wan_manager.wanConnPlugin is not None:
-            self.routerInfo[self.param.uuid]["wan-prefix-list"] = []
-        if True:
-            self.routerInfo[self.param.uuid]["lan-prefix-list"] = []
-            for bridge in [self.param.lan_manager.defaultBridge] + [x.get_bridge() for x in self.param.lan_manager.vpnsPluginList]:
-                prefix = bridge.get_prefix()
-                self.routerInfo[self.param.uuid]["lan-prefix-list"].append(prefix[0] + "/" + prefix[1])
-        self.routerInfo[self.param.uuid]["client-list"] = dict()
-
-        # routes dict
-        self.routesDict = dict()            # dict<gateway-ip, dict<router-id, list<prefix>>>
-
-        # client
-        self.apiClient = None
-
-        # servers
-        self.apiServerList = []
-        self.banUuidList = []
-
-        # start CASCADE-API server for all the bridges
-        for plugin in self.param.lan_manager.vpnsPluginList:
-            self.apiServerList.append(_ApiServer(self, plugin.get_bridge()))
-        self.logger.info("CASCADE-API servers started.")
+            # start CASCADE-API server for all the bridges
+            for plugin in self.param.lan_manager.vpnsPluginList:
+                self.apiServerList.append(_ApiServer(self, plugin.get_bridge()))
+            self.logger.info("CASCADE-API servers started.")
+        except:
+            self.dispose()
+            raise
 
     def dispose(self):
         for s in self.apiServerList:
