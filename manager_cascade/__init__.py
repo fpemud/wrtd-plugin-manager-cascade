@@ -96,6 +96,31 @@ class _PluginObject:
             self.vpnPlugin = None
             self.logger.info("CASCADE-VPN deactivated.")
 
+    def get_router_info(self):
+        ret = dict()
+
+        if self.vpnPlugin is not None:
+            ret["wvpn-plugin"] = dict()
+            ret["wvpn-plugin"]["name"] = self.vpnPlugin.full_name
+            if self.vpnPlugin.is_connected():
+                ret["wvpn-plugin"]["is-connected"] = True
+            else:
+                ret["wvpn-plugin"]["is-connected"] = False
+
+        ret["cascade"] = dict()
+        if True:
+            ret["cascade"]["my-id"] = self.param.uuid
+            ret["cascade"]["router-list"] = dict()
+            ret["cascade"]["router-list"].update(self.routerInfo)
+            if self.hasValidApiClient():
+                ret["cascade"]["router-list"][self.param.uuid]["parent"] = self.apiClient.get_peer_uuid()
+                ret["cascade"]["router-list"].update(self.apiClient.get_router_info())
+            for sproc in self.getAllRouterApiServerProcessors():
+                ret["cascade"]["router-list"].update(sproc.get_router_info())
+                ret["cascade"]["router-list"][sproc.get_peer_uuid()]["parent"] = self.param.uuid
+
+        return ret
+
     def hasValidApiClient(self):
         return self.apiClient is not None and self.apiClient.bRegistered
 
