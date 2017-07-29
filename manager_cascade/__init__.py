@@ -26,7 +26,7 @@ def get_plugin(name):
 
 class _PluginObject:
 
-    def __init__(self, cfg, tmpDir, varDir, data):
+    def init2(self, cfg, tmpDir, varDir, data):
         self.cascadeApiPort = 2221
         self.param = data
         self.logger = logging.getLogger(self.__module__ + "." + self.__class__.__name__)
