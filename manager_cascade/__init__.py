@@ -31,6 +31,7 @@ class _PluginObject:
         self.param = data
         self.logger = logging.getLogger(self.__module__ + "." + self.__class__.__name__)
 
+        # cascade-vpn plugin
         self.vpnPlugin = None
         try:
             cfgfile = os.path.join(self.param.etcDir, "cascade-vpn.json")
