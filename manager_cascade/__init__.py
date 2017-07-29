@@ -158,7 +158,7 @@ class _PluginObject:
         # check vpn prefix
         if util.prefixListConflict(self.vpnPlugin.get_prefix_list(), self.param.wan_manager.wanConnPlugin.get_prefix_list()):
             raise Exception("cascade-VPN prefix duplicates with internet connection")
-        if self.param.prefixPool.setExcludePrefixList("vpn", self.vpnPlugin.get_prefix_list()):
+        if self.param.prefix_pool.setExcludePrefixList("vpn", self.vpnPlugin.get_prefix_list()):
             os.kill(os.getpid(), signal.SIGHUP)
             raise Exception("bridge prefix duplicates with CASCADE-VPN connection, autofix it and restart")
 
@@ -183,7 +183,7 @@ class _PluginObject:
             self.apiClient = None
         if "cascade-vpn" in self.routerInfo[self.param.uuid]:
             self.routerInfo[self.param.uuid]["cascade-vpn"] = dict()
-        self.param.prefixPool.removeExcludePrefixList("vpn")
+        self.param.prefix_pool.removeExcludePrefixList("vpn")
 
         # notify downstream
         data = dict()
@@ -249,9 +249,9 @@ class _PluginObject:
         ret = False
         for router_id, item in data.items():
             tlist = _Helper.protocolPrefixListToPrefixList(item.get("wan-prefix-list", []))
-            ret |= self.param.prefixPool.setExcludePrefixList("upstream-wan-%s" % (router_id), tlist)
+            ret |= self.param.prefix_pool.setExcludePrefixList("upstream-wan-%s" % (router_id), tlist)
             tlist = _Helper.protocolPrefixListToPrefixList(item.get("lan-prefix-list", []))
-            ret |= self.param.prefixPool.setExcludePrefixList("upstream-lan-%s" % (router_id), tlist)
+            ret |= self.param.prefix_pool.setExcludePrefixList("upstream-lan-%s" % (router_id), tlist)
         if ret:
             os.kill(os.getpid(), signal.SIGHUP)
             raise Exception("prefix duplicates with upstream router %s, autofix it and restart" % (router_id))
@@ -268,8 +268,8 @@ class _PluginObject:
         # process by myself
         self._upstreamVpnHostRefresh(api_client)
         for router_id in data:
-            self.param.prefixPool.removeExcludePrefixList("upstream-lan-%s" % (router_id))
-            self.param.prefixPool.removeExcludePrefixList("upstream-wan-%s" % (router_id))
+            self.param.prefix_pool.removeExcludePrefixList("upstream-lan-%s" % (router_id))
+            self.param.prefix_pool.removeExcludePrefixList("upstream-wan-%s" % (router_id))
             self._removeRoutes(api_client.get_peer_ip(), router_id)
 
         # notify downstream
@@ -280,7 +280,7 @@ class _PluginObject:
         ret = False
         for router_id, item in data.items():
             tlist = _Helper.protocolPrefixListToPrefixList(item["wan-prefix-list"])
-            ret |= self.param.prefixPool.setExcludePrefixList("upstream-wan-%s" % (router_id), tlist)
+            ret |= self.param.prefix_pool.setExcludePrefixList("upstream-wan-%s" % (router_id), tlist)
         if ret:
             os.kill(os.getpid(), signal.SIGHUP)
             raise Exception("prefix duplicates with upstream router %s, autofix it and restart" % (router_id))
@@ -294,7 +294,7 @@ class _PluginObject:
         ret = False
         for router_id, item in data.items():
             tlist = _Helper.protocolPrefixListToPrefixList(item["lan-prefix-list"])
-            ret |= self.param.prefixPool.setExcludePrefixList("upstream-lan-%s" % (router_id), tlist)
+            ret |= self.param.prefix_pool.setExcludePrefixList("upstream-lan-%s" % (router_id), tlist)
         if ret:
             os.kill(os.getpid(), signal.SIGHUP)
             raise Exception("prefix duplicates with upstream router %s, autofix it and restart" % (router_id))
@@ -358,7 +358,7 @@ class _PluginObject:
         for router_id in data:
             self.param.lan_manager.remove_source("downstream-" + router_id)
             self._removeRoutes(sproc.get_peer_ip(), router_id)
-            self.param.prefixPool.removeExcludePrefixList("downstream-wan-%s" % (router_id))
+            self.param.prefix_pool.removeExcludePrefixList("downstream-wan-%s" % (router_id))
 
         # notify upstream and other downstream
         if self.hasValidApiClient():
@@ -474,7 +474,7 @@ class _PluginObject:
             if "wan-prefix-list" not in item:
                 continue        # used when called by on_cascade_downstream_router_add()
             tlist = _Helper.protocolPrefixListToPrefixList(item["wan-prefix-list"])
-            if self.param.prefixPool.setExcludePrefixList("downstream-wan-%s" % (router_id), tlist):
+            if self.param.prefix_pool.setExcludePrefixList("downstream-wan-%s" % (router_id), tlist):
                 show_router_id = router_id
         if show_router_id is not None:
             os.kill(os.getpid(), signal.SIGHUP)
