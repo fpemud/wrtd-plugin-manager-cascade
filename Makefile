@@ -1,6 +1,6 @@
 PACKAGE_VERSION=0.0.1
 prefix=/usr
-plugin=wvpn_n2n
+plugin=manager_cascade
 
 all:
 
