@@ -634,7 +634,7 @@ class _ApiClient(JsonApiEndPoint):
     def on_notification_router_add(self, data):
         assert self.bRegistered
 
-        ret = _Helper.upstreamRouterIdDuplicityCheck(self.pObj.param, data)
+        ret = self._upstreamRouterIdDuplicityCheck(data)
         if ret is not None:
             uuid, sproc = ret
             if sproc is not None:
@@ -692,6 +692,16 @@ class _ApiClient(JsonApiEndPoint):
         for router_id, item in data.items():
             for ip in item["client-list"]:
                 del self.routerInfo[router_id]["client-list"][ip]
+
+    def _upstreamRouterIdDuplicityCheck(self, data):
+        if self.pObj.param.uuid in data:
+            return (self.pObj.param.uuid, None)
+        for sproc in self.pObj.getAllRouterApiServerProcessors():
+            ret = set(sproc.get_router_info().keys()) & set(data.keys())
+            ret = list(ret)
+            if len(ret) > 0:
+                return (ret[0], sproc)
+        return None
 
 
 class _ApiServer:
@@ -756,7 +766,7 @@ class _ApiServerProcessor(JsonApiEndPoint):
     def on_command_register(self, data, return_callback, error_callback):
         # check data
         if "my-id" in data:
-            uuid = _Helper.downStreamRouterIdDuplicityCheck(self.pObj.param, data["router-list"])
+            uuid = self._downStreamRouterIdDuplicityCheck(data["router-list"])
             if uuid is not None:
                 self.pObj.logger.error("CASCADE-API client %s rejected, UUID %s duplicate." % (self.get_peer_ip(), uuid))
                 error_callback("UUID %s duplicate" % (uuid))
@@ -792,7 +802,7 @@ class _ApiServerProcessor(JsonApiEndPoint):
     def on_notification_router_add(self, data):
         assert self.bRegistered and self.peerUuid is not None
 
-        uuid = _Helper.downStreamRouterIdDuplicityCheck(self.pObj.param, data)
+        uuid = self._downStreamRouterIdDuplicityCheck(data)
         if uuid is not None:
             raise Exception("UUID %s duplicate" % (uuid))
 
@@ -847,6 +857,21 @@ class _ApiServerProcessor(JsonApiEndPoint):
             for ip in item["client-list"]:
                 del self.routerInfo[router_id]["client-list"][ip]
 
+    def _downStreamRouterIdDuplicityCheck(self, data):
+        if self.pObj.param.uuid in data:
+            return self.pObj.param.uuid
+        if self.pObj.param.cascadeManager.hasValidApiClient():
+            ret = set(self.pObj.param.cascadeManager.apiClient.get_router_info()) & set(data.keys())
+            ret = list(ret)
+            if len(ret) > 0:
+                return ret[0]
+        for sproc in self.pObj.param.cascadeManager.getAllRouterApiServerProcessors():
+            ret = set(sproc.get_router_info().keys()) & set(data.keys())
+            ret = list(ret)
+            if len(ret) > 0:
+                return ret[0]
+        return None
+
 
 class _Helper:
 
@@ -864,33 +889,6 @@ class _Helper:
             tlist = prefix.split("/")
             ret.append((tlist[0], tlist[1]))
         return ret
-
-    @staticmethod
-    def upstreamRouterIdDuplicityCheck(param, routerInfo):
-        if param.uuid in routerInfo:
-            return (param.uuid, None)
-        for sproc in param.cascadeManager.getAllRouterApiServerProcessors():
-            ret = set(sproc.get_router_info().keys()) & set(routerInfo.keys())
-            ret = list(ret)
-            if len(ret) > 0:
-                return (ret[0], sproc)
-        return None
-
-    @staticmethod
-    def downStreamRouterIdDuplicityCheck(param, routerInfo):
-        if param.uuid in routerInfo:
-            return param.uuid
-        if param.cascadeManager.hasValidApiClient():
-            ret = set(param.cascadeManager.apiClient.get_router_info()) & set(routerInfo.keys())
-            ret = list(ret)
-            if len(ret) > 0:
-                return ret[0]
-        for sproc in param.cascadeManager.getAllRouterApiServerProcessors():
-            ret = set(sproc.get_router_info().keys()) & set(routerInfo.keys())
-            ret = list(ret)
-            if len(ret) > 0:
-                return ret[0]
-        return None
 
     @staticmethod
     def logRouterAdd(data, logger):
