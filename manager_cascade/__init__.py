@@ -345,7 +345,8 @@ class _PluginObject:
                 self._updateRoutes(sproc.get_peer_ip(), router_id, data[router_id]["lan-prefix-list"])
             if "client-list" in router_info:
                 self.param.lan_manager.add_source("downstream-" + router_id)
-                self.param.lan_manager.add_client("downstream-" + router_id, router_info["client-list"])
+                if len(router_info["client-list"]) > 0:
+                    self.param.lan_manager.add_client("downstream-" + router_id, router_info["client-list"])
 
         # notify upstream and other downstream
         if self.hasValidApiClient():
