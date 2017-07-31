@@ -65,7 +65,7 @@ class _PluginObject:
             if self.vpnPlugin is not None:
                 self.routerInfo[self.param.uuid]["cascade-vpn"] = dict()
             if self.param.wan_manager.wanConnPlugin is not None:
-                self.routerInfo[self.param.uuid]["wan-prefix-list"] = []
+                self.routerInfo[self.param.uuid]["wan-connection"] = dict()
             if True:
                 self.routerInfo[self.param.uuid]["lan-prefix-list"] = []
                 for bridge in [self.param.lan_manager.defaultBridge] + [x.get_bridge() for x in self.param.lan_manager.vpnsPluginList]:
@@ -145,14 +145,14 @@ class _PluginObject:
         return ret
 
     def on_wconn_up(self):
-        self._wanPrefixListChange(self.param.wan_manager.wanConnPlugin.get_prefix_list())
+        self._wanConnectionChange()
         if self.vpnPlugin is not None:
             self.vpnPlugin.start()
 
     def on_wconn_down(self):
         if self.vpnPlugin is not None:
             self.vpnPlugin.stop()
-        self._wanPrefixListChange([])
+        self._wanConnectionChange()
 
     def on_wvpn_up(self):
         # check vpn prefix
@@ -248,7 +248,7 @@ class _PluginObject:
         # process by myself
         ret = False
         for router_id, item in data.items():
-            tlist = _Helper.protocolPrefixListToPrefixList(item.get("wan-prefix-list", []))
+            tlist = _Helper.protocolWanConnectionToPrefixList(item.get("wan-connection", dict()))
             ret |= self.param.prefix_pool.setExcludePrefixList("upstream-wan-%s" % (router_id), tlist)
             tlist = _Helper.protocolPrefixListToPrefixList(item.get("lan-prefix-list", []))
             ret |= self.param.prefix_pool.setExcludePrefixList("upstream-lan-%s" % (router_id), tlist)
@@ -279,7 +279,7 @@ class _PluginObject:
     def on_cascade_upstream_router_wan_prefix_list_change(self, api_client, data):
         ret = False
         for router_id, item in data.items():
-            tlist = _Helper.protocolPrefixListToPrefixList(item["wan-prefix-list"])
+            tlist = _Helper.protocolWanConnectionToPrefixList(item["wan-connection"])
             ret |= self.param.prefix_pool.setExcludePrefixList("upstream-wan-%s" % (router_id), tlist)
         if ret:
             os.kill(os.getpid(), signal.SIGHUP)
@@ -287,7 +287,7 @@ class _PluginObject:
 
         # notify downstream
         for sproc in self.getAllValidApiServerProcessors():
-            sproc.send_notification("wan-prefix-list-change", data)
+            sproc.send_notification("wan-connection-change", data)
 
     def on_cascade_upstream_router_lan_prefix_list_change(self, api_client, data):
         # process by myself
@@ -373,9 +373,9 @@ class _PluginObject:
 
         # notify upstream and other downstream
         if self.hasValidApiClient():
-            self.apiClient.send_notification("router-wan-prefix-list-change", data)
+            self.apiClient.send_notification("router-wan-connection-change", data)
         for obj in self.getAllValidApiServerProcessorsExcept(sproc):
-            obj.send_notification("router-wan-prefix-list-change", data)
+            obj.send_notification("router-wan-connection-change", data)
 
     def on_cascade_downstream_router_lan_prefix_list_change(self, sproc, data):
         # process by myself
@@ -441,20 +441,27 @@ class _PluginObject:
         for sproc in self.getAllValidApiServerProcessors():
             sproc.send_notification("router-client-%s" % (type), data)
 
-    def _wanPrefixListChange(self, prefixList):
-        prefixList = _Helper.prefixListToProtocolPrefixList(prefixList)
-
+    def _wanConnectionChange(self):
         # process by myself
-        self.routerInfo[self.param.uuid]["wan-prefix-list"] = prefixList
+        if self.param.wan_manager.is_connected():
+            self.routerInfo[self.param.uuid]["wan-connection"] = {
+                "default": {
+                    "ip": self.param.wan_manager.wanConnPlugin.get_ip(),
+                    "netmask": self.param.wan_manager.wanConnPlugin.get_netmask(),
+                    "is-ip-public": False,
+                },
+            }
+        else:
+            self.routerInfo[self.param.uuid]["wan-connection"] = dict()
 
         # notify upstream & downstream
         data = dict()
         data[self.param.uuid] = dict()
-        data[self.param.uuid]["wan-prefix-list"] = prefixList
+        data[self.param.uuid]["wan-connection"] = self.routerInfo[self.param.uuid]["wan-connection"]
         if self._apiClientCanNotify():
-            self.apiClient.send_notification("router-wan-prefix-list-change", data)
+            self.apiClient.send_notification("router-wan-connection-change", data)
         for sproc in self.getAllValidApiServerProcessors():
-            sproc.send_notification("router-wan-prefix-list-change", data)
+            sproc.send_notification("router-wan-connection-change", data)
 
     def _upstreamLanPrefixListChange(self, api_client, data):
         for router_id in data:
@@ -889,6 +896,14 @@ class _Helper:
         for prefix in protocolPrefixList:
             tlist = prefix.split("/")
             ret.append((tlist[0], tlist[1]))
+        return ret
+
+    @staticmethod
+    def protocolWanConnectionToPrefixList(wanConn):
+        ret = []
+        for conn in wanConn:
+            conn["ip"]
+            ret.append((conn["ip"], conn["netmask"]))
         return ret
 
     @staticmethod

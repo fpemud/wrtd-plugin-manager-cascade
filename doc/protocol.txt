@@ -11,7 +11,13 @@
 #             "c5facfa6-d8c3-4bce-ac13-6abab49c86fc": {
 #                 "parent": "c6f7cdad-d2ce-3478-cabc-a3b5445bdfee",
 #                 "hostname": "abc",
-#                 "wan-prefix-list": ["192.168.0.0/255.255.255.0", "192.168.1.0/255.255.255.0"],
+#                 "wan-connection": {
+#                     "default": {
+#                         "ip": "114.100.20.1",
+#                         "netmask": "255.255.255.0",
+#                         "is-ip-public": True,
+#                     },
+#                 },
 #                 "lan-prefix-list": ["192.168.2.0/255.255.255.0", "192.168.3.0/255.255.255.0"],
 #                 "client-list": {
 #                     "1.2.3.4": {
@@ -34,7 +40,13 @@
 #                     "loca1-ip": "1.2.3.4",
 #                     "remote-ip": "2.3.4.5",
 #                 },
-#                 "wan-prefix-list": ["192.168.0.0/255.255.255.0", "192.168.1.0/255.255.255.0"],
+#                 "wan-connection": {
+#                     "default": {
+#                         "ip": "132.55.139.232",
+#                         "netmask": "255.255.255.0",
+#                         "is-ip-public": False,
+#                     },
+#                 },
 #                 "lan-prefix-list": ["192.168.2.0/255.255.255.0", "192.168.3.0/255.255.255.0"],
 #                 "client-list": {
 #                     "1.2.3.4": {
@@ -56,7 +68,6 @@
 #     "data": {
 #         "c5facfa6-d8c3-4bce-ac13-6abab49c86fc": {
 #             "parent": "c6f7cdad-d2ce-3478-cabc-a3b5445bdfee",
-#             "wan-prefix-list": ["192.168.0.0/255.255.255.0", "192.168.1.0/255.255.255.0"],
 #             "lan-prefix-list": ["192.168.2.0/255.255.255.0", "192.168.3.0/255.255.255.0"],
 #             "client-list": {
 #                 "1.2.3.4": {
@@ -80,15 +91,21 @@
 # }
 #
 ################################################################################
-# client2server: notification: router-wan-prefix-list-change
+# client2server: notification: router-wan-connection-change
 ################################################################################
 #
 # {
-#     "notification": "router-wan-prefix-list-change",
+#     "notification": "router-wan-connection-change",
 #     "data": {
 #         "c5facfa6-d8c3-4bce-ac13-6abab49c86fc" : {
-#             "wan-prefix-list": ["192.168.0.0/255.255.255.0", "192.168.1.0/255.255.255.0"],
-#         }
+#             "wan-connection": {
+#                 "default": {
+#                     "ip": "132.55.139.232",
+#                     "netmask": "255.255.255.0",
+#                     "is-ip-public": False,
+#                 },
+#             },
+#         },
 #     },
 # }
 #
@@ -187,10 +204,10 @@
 # }
 #
 ################################################################################
-# server2client: notification: router-wan-prefix-list-change
+# server2client: notification: router-wan-connection-change
 ################################################################################
 #
-# same as client2server: notification: router-wan-prefix-list-change
+# same as client2server: notification: router-wan-connection-change
 #
 #
 ################################################################################
