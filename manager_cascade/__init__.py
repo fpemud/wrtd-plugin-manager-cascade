@@ -8,9 +8,9 @@ import signal
 import socket
 import logging
 import pyroute2
+import msghole
 from gi.repository import Gio
 from . import util
-from .util import JsonApiEndPoint
 
 
 def get_plugin_list():
@@ -561,7 +561,7 @@ class _PluginObject:
         return tl[0] + "/" + str(util.ipMaskToLen(tl[1]))
 
 
-class _ApiClient(JsonApiEndPoint):
+class _ApiClient(msghole.EndPoint):
 
     # no exception is allowed in on_cascade_upstream_fail(),  on_cascade_upstream_error(),  on_cascade_upstream_down().
     # on_cascade_upstream_fail() would be called if there's error before client is registered.
@@ -744,7 +744,7 @@ class _ApiServer:
         self.serverListener.accept_async(None, self._on_accept)
 
 
-class _ApiServerProcessor(JsonApiEndPoint):
+class _ApiServerProcessor(msghole.EndPoint):
 
     def __init__(self, pObj, serverObj, conn):
         super().__init__()
