@@ -12,10 +12,11 @@
 #                 "parent": "c6f7cdad-d2ce-3478-cabc-a3b5445bdfee",
 #                 "hostname": "abc",
 #                 "wan-connection": {
-#                     "default": {
+#                     "main": {
 #                         "ip": "114.100.20.1",
 #                         "netmask": "255.255.255.0",
 #                         "is-ip-public": True,
+#                         "extra-prefix-list": ["10.172.44.100/255.255.252.0"],
 #                     },
 #                 },
 #                 "lan-prefix-list": ["192.168.2.0/255.255.255.0", "192.168.3.0/255.255.255.0"],
@@ -41,7 +42,7 @@
 #                     "remote-ip": "2.3.4.5",
 #                 },
 #                 "wan-connection": {
-#                     "default": {
+#                     "main": {
 #                         "ip": "132.55.139.232",
 #                         "netmask": "255.255.255.0",
 #                         "is-ip-public": False,

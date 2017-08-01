@@ -144,14 +144,17 @@ class _PluginObject:
                     ret.append(sproc)
         return ret
 
-    def on_wconn_up(self):
+    def on_wan_conn_up(self):
         self._wanConnectionChange()
         if self.vpnPlugin is not None:
             self.vpnPlugin.start()
 
-    def on_wconn_down(self):
+    def on_wan_conn_down(self):
         if self.vpnPlugin is not None:
             self.vpnPlugin.stop()
+        self._wanConnectionChange()
+
+    def on_wan_ipcheck_complete(self, isIpPublic):
         self._wanConnectionChange()
 
     def on_wvpn_up(self):
@@ -277,7 +280,7 @@ class _PluginObject:
         for sproc in self.getAllValidApiServerProcessors():
             sproc.send_notification("router-remove", data)
 
-    def on_cascade_upstream_router_wan_prefix_list_change(self, api_client, data):
+    def on_cascade_upstream_router_wan_connection_change(self, api_client, data):
         ret = False
         for router_id, item in data.items():
             tlist = _Helper.protocolWanConnectionToPrefixList(item["wan-connection"])
@@ -368,7 +371,7 @@ class _PluginObject:
         for obj in self.getAllValidApiServerProcessorsExcept(sproc):
             obj.send_notification("router-remove", data)
 
-    def on_cascade_downstream_router_wan_prefix_list_change(self, sproc, data):
+    def on_cascade_downstream_router_wan_connection_change(self, sproc, data):
         # process by myself
         self._downstreamWanPrefixListCheck(data)
 
@@ -446,19 +449,22 @@ class _PluginObject:
         # process by myself
         if self.param.wan_manager.is_connected():
             self.routerInfo[self.param.uuid]["wan-connection"] = {
-                "default": {
+                "main": {
                     "ip": self.param.wan_manager.wanConnPlugin.get_ip(),
                     "netmask": self.param.wan_manager.wanConnPlugin.get_netmask(),
-                    "is-ip-public": False,
+                    "is-ip-public": self.param.wan_manager.wanConnIpIsPublic,
+                    "extra-prefix-list": _Helper.prefixListToProtocolPrefixList(self.param.wan_manager.wanConnPlugin.get_extra_prefix_list()),
                 },
             }
         else:
             self.routerInfo[self.param.uuid]["wan-connection"] = dict()
 
         # notify upstream & downstream
-        data = dict()
-        data[self.param.uuid] = dict()
-        data[self.param.uuid]["wan-connection"] = self.routerInfo[self.param.uuid]["wan-connection"]
+        data = {
+            self.param.uuid: {
+                "wan-connection": self.routerInfo[self.param.uuid]["wan-connection"],
+            },
+        }
         if self._apiClientCanNotify():
             self.apiClient.send_notification("router-wan-connection-change", data)
         for sproc in self.getAllValidApiServerProcessors():
@@ -480,9 +486,9 @@ class _PluginObject:
         # check downstream wan-prefix and restart if neccessary
         show_router_id = None
         for router_id, item in data.items():
-            if "wan-prefix-list" not in item:
+            if "wan-connection" not in item:
                 continue        # used when called by on_cascade_downstream_router_add()
-            tlist = _Helper.protocolPrefixListToPrefixList(item["wan-prefix-list"])
+            tlist = _Helper.protocolWanConnectionToPrefixList(item["wan-connection"])
             if self.param.prefix_pool.setExcludePrefixList("downstream-wan-%s" % (router_id), tlist):
                 show_router_id = router_id
         if show_router_id is not None:
@@ -668,11 +674,11 @@ class _ApiClient(JsonApiEndPoint):
             self.routerInfo[router_id]["cascade-vpn"] = item["cascade-vpn"]
         self.pObj.param.manager_caller.call("on_cascade_upstream_router_cascade_vpn_change", self, data)
 
-    def on_notification_router_wan_prefix_list_change(self, data):
+    def on_notification_router_wan_connection_change(self, data):
         assert self.bRegistered
         for router_id, item in data.items():
-            self.routerInfo[router_id]["wan-prefix-list"] = item["wan-prefix-list"]
-        self.pObj.param.manager_caller.call("on_cascade_upstream_router_wan_prefix_list_change", self, data)
+            self.routerInfo[router_id]["wan-connection"] = item["wan-connection"]
+        self.pObj.param.manager_caller.call("on_cascade_upstream_router_wan_connection_change", self, data)
 
     def on_notification_router_lan_prefix_list_change(self, data):
         assert self.bRegistered
@@ -827,12 +833,12 @@ class _ApiServerProcessor(JsonApiEndPoint):
         for router_id in data:
             del self.routerInfo[router_id]
 
-    def on_notification_router_wan_prefix_list_change(self, data):
+    def on_notification_router_wan_connection_change(self, data):
         assert self.bRegistered and self.peerUuid is not None
 
         for router_id, item in data.items():
-            self.routerInfo[router_id]["wan-prefix-list"] = item["wan-prefix-list"]
-        self.pObj.param.manager_caller.call("on_cascade_downstream_router_wan_prefix_list_change", self, data)
+            self.routerInfo[router_id]["wan-connection"] = item["wan-connection"]
+        self.pObj.param.manager_caller.call("on_cascade_downstream_router_wan_connection_change", self, data)
 
     def on_notification_router_lan_prefix_list_change(self, data):
         assert self.bRegistered and self.peerUuid is not None
@@ -902,9 +908,12 @@ class _Helper:
     @staticmethod
     def protocolWanConnectionToPrefixList(wanConn):
         ret = []
-        for conn in wanConn:
-            conn["ip"]
+        for conn in wanConn.values():
             ret.append((conn["ip"], conn["netmask"]))
+            if "extra-prefix-list" in conn:
+                for prefix in conn["extra-prefix-list"]:
+                    tlist = prefix.split("/")
+                    ret.append((tlist[0], tlist[1]))
         return ret
 
     @staticmethod
