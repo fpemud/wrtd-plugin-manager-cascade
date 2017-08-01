@@ -39,7 +39,3 @@ class PluginTemplateCascadeVpn:
 
     def get_interface(self):
         assert False
-
-    def get_prefix_list(self):
-        # returns [(ip, mask), (ip,mask ), ...]
-        assert False

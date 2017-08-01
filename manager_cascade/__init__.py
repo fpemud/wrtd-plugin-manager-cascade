@@ -156,9 +156,11 @@ class _PluginObject:
 
     def on_wvpn_up(self):
         # check vpn prefix
-        if util.prefixListConflict(self.vpnPlugin.get_prefix_list(), self.param.wan_manager.wanConnPlugin.get_prefix_list()):
+        vpnPrefixList = [util.ipMaskToPrefix(self.vpnPlugin.get_local_ip(), self.vpnPlugin.get_netmask())]
+        wanPrefixList = [util.ipMaskToPrefix(self.param.wan_manager.wanConnPlugin.get_ip(), self.param.wan_manager.wanConnPlugin.get_netmask())]
+        if util.prefixListConflict(vpnPrefixList, wanPrefixList):
             raise Exception("cascade-VPN prefix duplicates with internet connection")
-        if self.param.prefix_pool.setExcludePrefixList("vpn", self.vpnPlugin.get_prefix_list()):
+        if self.param.prefix_pool.setExcludePrefixList("vpn", vpnPrefixList):
             os.kill(os.getpid(), signal.SIGHUP)
             raise Exception("bridge prefix duplicates with CASCADE-VPN connection, autofix it and restart")
 
@@ -469,8 +471,8 @@ class _PluginObject:
                 continue                # called by on_cascade_upstream_router_add()
             if router_id == api_client.get_peer_uuid():
                 tlist = list(data[router_id]["lan-prefix-list"])
-                for prefix in self.vpnPlugin.get_prefix_list():
-                    tlist.remove(prefix[0] + "/" + prefix[1])
+                prefix = util.ipMaskToPrefix(self.vpnPlugin.get_local_ip(), self.vpnPlugin.get_netmask())
+                tlist.remove(prefix[0] + "/" + prefix[1])
             else:
                 tlist = data[router_id]["lan-prefix-list"]
             self._updateRoutes(api_client.get_peer_ip(), router_id, tlist)

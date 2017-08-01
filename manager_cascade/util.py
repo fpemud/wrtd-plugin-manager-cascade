@@ -6,6 +6,11 @@ import ipaddress
 from gi.repository import Gio
 
 
+def ipMaskToPrefix(ip, netmask):
+    netobj = ipaddress.IPv4Network(ip + "/" + netmask)
+    return (netobj.network_address, netobj.netmask)
+
+
 def bridgeGetIp(bridge):
     return str(ipaddress.IPv4Address(bridge.get_prefix()[0]) + 1)
 
