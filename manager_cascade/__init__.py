@@ -447,7 +447,7 @@ class _PluginObject:
 
     def _wanConnectionChange(self):
         # process by myself
-        if self.param.wan_manager.is_connected():
+        if self.param.wan_manager.wanConnPlugin.is_connected():
             self.routerInfo[self.param.uuid]["wan-connection"] = {
                 "main": {
                     "ip": self.param.wan_manager.wanConnPlugin.get_ip(),
