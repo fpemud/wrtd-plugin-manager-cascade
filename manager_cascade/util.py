@@ -5,7 +5,7 @@ import ipaddress
 
 
 def ipMaskToPrefix(ip, netmask):
-    netobj = ipaddress.IPv4Network(ip + "/" + netmask)
+    netobj = ipaddress.IPv4Network(ip + "/" + netmask, strict=False)
     return (str(netobj.network_address), str(netobj.netmask))
 
 
