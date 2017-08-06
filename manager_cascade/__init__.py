@@ -542,7 +542,12 @@ class _PluginObject:
             tlist = list(self.routesDict[gateway_ip][router_id])
             for prefix in tlist:
                 if prefix not in prefix_list:
-                    ipp.route("del", dst=self.__prefixConvert(prefix))
+                    try:
+                        ipp.route("del", dst=self.__prefixConvert(prefix))
+                    except pyroute2.netlink.exceptions.NetlinkError as e:
+                        if e[0] == 3 and e[1] == "No such process":
+                            pass        # route does not exist, ignore this error
+                        raise
                     self.routesDict[gateway_ip][router_id].remove(prefix)
             # add routes
             for prefix in prefix_list:
@@ -554,7 +559,12 @@ class _PluginObject:
         if router_id in self.routesDict[gateway_ip]:
             with pyroute2.IPRoute() as ipp:
                 for prefix in self.routesDict[gateway_ip][router_id]:
-                    ipp.route("del", dst=self.__prefixConvert(prefix))
+                    try:
+                        ipp.route("del", dst=self.__prefixConvert(prefix))
+                    except pyroute2.netlink.exceptions.NetlinkError as e:
+                        if e[0] == 3 and e[1] == "No such process":
+                            pass        # route does not exist, ignore this error
+                        raise
                 del self.routesDict[gateway_ip][router_id]
 
     def __prefixConvert(self, prefix):
