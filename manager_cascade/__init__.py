@@ -910,7 +910,7 @@ class _Helper:
     def protocolWanConnectionToPrefixList(wanConn):
         ret = []
         for conn in wanConn.values():
-            ret.append((conn["ip"], conn["netmask"]))
+            ret.append(util.ipMaskToPrefix(conn["ip"], conn["netmask"]))
             if "extra-prefix-list" in conn:
                 for prefix in conn["extra-prefix-list"]:
                     tlist = prefix.split("/")
