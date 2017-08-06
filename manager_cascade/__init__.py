@@ -160,7 +160,7 @@ class _PluginObject:
     def on_wvpn_up(self):
         # check vpn prefix
         vpnPrefixList = [util.ipMaskToPrefix(self.vpnPlugin.get_local_ip(), self.vpnPlugin.get_netmask())]
-        wanPrefixList = [util.ipMaskToPrefix(self.param.wan_manager.wanConnPlugin.get_local_ip(), self.param.wan_manager.wanConnPlugin.get_netmask())] + self.param.wan_manager.wanConnPlugin.get_extra_prefix_list()
+        wanPrefixList = [util.ipMaskToPrefix(self.param.wan_manager.wanConnPlugin.get_ip(), self.param.wan_manager.wanConnPlugin.get_netmask())] + self.param.wan_manager.wanConnPlugin.get_extra_prefix_list()
         if util.prefixListConflict(vpnPrefixList, wanPrefixList):
             raise Exception("cascade-VPN prefix duplicates with internet connection")
         if self.param.prefix_pool.setExcludePrefixList("vpn", vpnPrefixList):
