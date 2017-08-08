@@ -74,6 +74,9 @@ class _PluginObject:
                     prefix = bridge.get_prefix()
                     self.router_info[self.param.uuid]["lan-prefix-list"].append(prefix[0] + "/" + prefix[1])
             self.router_info[self.param.uuid]["client-list"] = dict()
+
+            # register endpoint factory
+            self.param.managers["apiserver"].register_endpoint_factory("cascade", ApiServerEndPointFactory(self))
         except:
             self.dispose()
             raise
@@ -90,10 +93,6 @@ class _PluginObject:
             self.vpnPlugin.stop()
             self.vpnPlugin = None
             self.logger.info("CASCADE-VPN deactivated.")
-
-    def manager_initialized(self, name):
-        if name == "apiserver":
-            self.param.managers[name].register_endpoint_factory("cascade", ApiServerEndPointFactory(self))
 
     def get_router_info(self):
         ret = dict()
@@ -148,14 +147,14 @@ class _PluginObject:
         self.router_info[self.param.uuid]["cascade-vpn"]["local-ip"] = self.vpnPlugin.get_local_ip()
         self.router_info[self.param.uuid]["cascade-vpn"]["remote-ip"] = self.vpnPlugin.get_remote_ip()
         assert self.apiClient is None
-        self.apiClient = _ApiClient(self, self.vpnPlugin.get_remote_ip())
+        self.apiClient = ApiClient(self, self.vpnPlugin.get_remote_ip())
 
         # notify downstream
         data = dict()
         data[self.param.uuid] = dict()
         data[self.param.uuid]["cascade-vpn"] = self.router_info[self.param.uuid]["cascade-vpn"]
         for api_server in self.apiServerList:
-            api_server.sproc.send_notification("router-cascade-vpn-change", data)
+            api_server.send_notification("router-cascade-vpn-change", data)
 
     def on_wvpn_down(self):
         # process by myself
@@ -171,7 +170,7 @@ class _PluginObject:
         data[self.param.uuid] = dict()
         data[self.param.uuid]["cascade-vpn"] = self.router_info[self.param.uuid]["cascade-vpn"]
         for api_server in self.apiServerList:
-            api_server.sproc.send_notification("router-cascade-vpn-change", data)
+            api_server.send_notification("router-cascade-vpn-change", data)
 
     def on_client_add(self, source_id, ip_data_dict):
         self._clientAddOrChange("add", source_id, ip_data_dict)
@@ -202,7 +201,7 @@ class _PluginObject:
         data[self.param.uuid] = dict()
         data[self.param.uuid]["client-list"] = ip_list
         for api_server in self.apiServerList:
-            api_server.sproc.send_notification("router-client-remove", data)
+            api_server.send_notification("router-client-remove", data)
 
     def on_cascade_upstream_up(self, api_client, data):
         self.banUuidList = []
@@ -241,7 +240,7 @@ class _PluginObject:
 
         # notify downstream
         for api_server in self.apiServerList:
-            api_server.sproc.send_notification("router-add", data)
+            api_server.send_notification("router-add", data)
 
     def on_cascade_upstream_router_remove(self, api_client, data):
         assert len(data) > 0
@@ -255,7 +254,7 @@ class _PluginObject:
 
         # notify downstream
         for api_server in self.apiServerList:
-            api_server.sproc.send_notification("router-remove", data)
+            api_server.send_notification("router-remove", data)
 
     def on_cascade_upstream_router_wan_connection_change(self, api_client, data):
         ret = False
@@ -268,7 +267,7 @@ class _PluginObject:
 
         # notify downstream
         for api_server in self.apiServerList:
-            api_server.sproc.send_notification("wan-connection-change", data)
+            api_server.send_notification("wan-connection-change", data)
 
     def on_cascade_upstream_router_lan_prefix_list_change(self, api_client, data):
         # process by myself
@@ -283,7 +282,7 @@ class _PluginObject:
 
         # notify downstream
         for api_server in self.apiServerList:
-            api_server.sproc.send_notification("lan-prefix-list-change", data)
+            api_server.send_notification("lan-prefix-list-change", data)
 
     def on_cascade_upstream_router_client_add(self, api_client, data):
         # process by myself
@@ -291,7 +290,7 @@ class _PluginObject:
 
         # notify downstream
         for api_server in self.apiServerList:
-            api_server.sproc.send_notification("router-client-add", data)
+            api_server.send_notification("router-client-add", data)
 
     def on_cascade_upstream_router_client_change(self, api_client, data):
         # process by myself
@@ -299,7 +298,7 @@ class _PluginObject:
 
         # notify downstream
         for api_server in self.apiServerList:
-            api_server.sproc.send_notification("router-client-change", data)
+            api_server.send_notification("router-client-change", data)
 
     def on_cascade_upstream_router_client_remove(self, api_client, data):
         # process by myself
@@ -307,7 +306,7 @@ class _PluginObject:
 
         # notify downstream
         for api_server in self.apiServerList:
-            api_server.sproc.send_notification("router-client-remove", data)
+            api_server.send_notification("router-client-remove", data)
 
     def on_cascade_downstream_up(self, api_server, data):
         self.routesDict[api_server.peer_ip] = dict()
@@ -427,7 +426,7 @@ class _PluginObject:
         data[self.param.uuid] = dict()
         data[self.param.uuid]["client-list"] = ip_data_dict
         for api_server in self.apiServerList:
-            api_server.sproc.send_notification("router-client-%s" % (type), data)
+            api_server.send_notification("router-client-%s" % (type), data)
 
     def _wanConnectionChange(self):
         # process by myself
@@ -452,7 +451,7 @@ class _PluginObject:
         if self._apiClientConnected():
             self.apiClient.send_notification("router-wan-connection-change", data)
         for api_server in self.apiServerList:
-            api_server.sproc.send_notification("router-wan-connection-change", data)
+            api_server.send_notification("router-wan-connection-change", data)
 
     def _upstreamLanPrefixListChange(self, api_client, data):
         for router_id in data:
@@ -558,7 +557,7 @@ class _PluginObject:
         return tl[0] + "/" + str(util.ipMaskToLen(tl[1]))
 
 
-class _ApiClient(msghole.EndPoint):
+class ApiClient(msghole.EndPoint):
 
     # no exception is allowed in on_cascade_upstream_fail(),  on_cascade_upstream_error(),  on_cascade_upstream_down().
     # on_cascade_upstream_fail() would be called if there's error before client is registered.
@@ -712,7 +711,8 @@ class ApiServerEndPointFactory:
     def __init__(self, pObj):
         self.pObj = pObj
 
-    def new_endpoint(self, local_ip, local_port, peer_ip, peer_port, sproc):
+    def new_endpoint(self, channel, local_ip, local_port, peer_ip, peer_port, sproc):
+        assert channel == "cascade"
         for api_server in self.pObj.apiServerList:
             if api_server.peer_ip == peer_ip:
                 raise Exception("multiple channel per IP address")
