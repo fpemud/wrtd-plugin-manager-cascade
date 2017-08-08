@@ -80,7 +80,7 @@ class _PluginObject:
 
     def dispose(self):
         for api_server in self.apiServerList:
-            api_server.sproc.close()
+            api_server.close()
         self.apiServerList = []
 
         if self.apiClient is not None:
@@ -188,7 +188,7 @@ class _PluginObject:
                 del self.router_info[self.param.uuid]["client-list"][ip]
         for api_server in self.apiServerList:
             if api_server.peer_ip in ip_list:
-                api_server.sproc.close()
+                api_server.close()
 
         # notify upstream
         if self._apiClientConnected():
@@ -616,7 +616,7 @@ class _ApiClient(msghole.EndPoint):
             for api_server in self.pObj.apiServerList:
                 if m.group(1) in api_server.router_info:
                     self.pObj.banUuidList.append(m.group(1))
-                    api_server.sproc.close()
+                    api_server.close()
         raise Exception(reason)
 
     def on_error(self, excp):
@@ -642,7 +642,7 @@ class _ApiClient(msghole.EndPoint):
             uuid, api_server = ret
             if api_server is not None:
                 self.pObj.banUuidList.append(uuid)
-                api_server.sproc.close()
+                api_server.close()
             raise Exception("UUID %s duplicate" % (uuid))
 
         self.router_info.update(data)
@@ -727,6 +727,8 @@ class ApiServerEndPoint:
         self.sproc = sproc
         self.peer_uuid = None
         self.router_info = None
+        self.send_notification = sproc.send_notification
+        self.close = sproc.close
 
     def init2(self, data):
         # check
@@ -756,7 +758,7 @@ class ApiServerEndPoint:
                 data2["router-list"][api_server.peer_uuid]["parent"] = self.pObj.param.uuid
         return data2
 
-    def close(self):
+    def close2(self):
         self.pObj.param.manager_caller.call("on_cascade_downstream_down", self)
         try:
             self.pObj.apiServerList.remove(self)
