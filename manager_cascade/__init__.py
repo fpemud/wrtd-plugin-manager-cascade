@@ -332,9 +332,9 @@ class _PluginObject:
         # notify upstream and other downstream
         if self._apiClientRegistered():
             self.apiClient.send_notification("router-add", data)
-        for api_server in self.apiServerList:
-            if api_server != api_server:
-                api_server.sproc.send_notification("router-add", data)
+        for obj in self.apiServerList:
+            if obj != api_server:
+                obj.sproc.send_notification("router-add", data)
 
     def on_cascade_downstream_router_remove(self, api_server, data):
         # process by myself
@@ -346,9 +346,9 @@ class _PluginObject:
         # notify upstream and other downstream
         if self._apiClientRegistered():
             self.apiClient.send_notification("router-remove", data)
-        for api_server in self.apiServerList:
-            if api_server != api_server:
-                api_server.sproc.send_notification("router-remove", data)
+        for obj in self.apiServerList:
+            if obj != api_server:
+                obj.sproc.send_notification("router-remove", data)
 
     def on_cascade_downstream_router_wan_connection_change(self, api_server, data):
         # process by myself
@@ -357,9 +357,9 @@ class _PluginObject:
         # notify upstream and other downstream
         if self._apiClientRegistered():
             self.apiClient.send_notification("router-wan-connection-change", data)
-        for api_server in self.apiServerList:
-            if api_server != api_server:
-                api_server.sproc.send_notification("router-wan-connection-change", data)
+        for obj in self.apiServerList:
+            if obj != api_server:
+                obj.sproc.send_notification("router-wan-connection-change", data)
 
     def on_cascade_downstream_router_lan_prefix_list_change(self, api_server, data):
         # process by myself
@@ -369,9 +369,9 @@ class _PluginObject:
         # notify upstream and other downstream
         if self._apiClientRegistered():
             self.apiClient.send_notification("router-lan-prefix-list-change", data)
-        for api_server in self.apiServerList:
-            if api_server != api_server:
-                api_server.sproc.send_notification("router-lan-prefix-list-change", data)
+        for obj in self.apiServerList:
+            if obj != api_server:
+                obj.sproc.send_notification("router-lan-prefix-list-change", data)
 
     def on_cascade_downstream_router_client_add(self, api_server, data):
         # process by myself
@@ -381,9 +381,9 @@ class _PluginObject:
         # notify upstream and other downstream
         if self._apiClientRegistered():
             self.apiClient.send_notification("router-client-add", data)
-        for api_server in self.apiServerList:
-            if api_server != api_server:
-                api_server.sproc.send_notification("router-client-add", data)
+        for obj in self.apiServerList:
+            if obj != api_server:
+                obj.sproc.send_notification("router-client-add", data)
 
     def on_cascade_downstream_router_client_change(self, api_server, data):
         # process by myself
@@ -393,9 +393,9 @@ class _PluginObject:
         # notify upstream and other downstream
         if self._apiClientRegistered():
             self.apiClient.send_notification("router-client-change", data)
-        for api_server in self.apiServerList:
-            if api_server != api_server:
-                api_server.sproc.send_notification("router-client-change", data)
+        for obj in self.apiServerList:
+            if obj != api_server:
+                obj.sproc.send_notification("router-client-change", data)
 
     def on_cascade_downstream_router_client_remove(self, api_server, data):
         # process by myself
@@ -405,9 +405,9 @@ class _PluginObject:
         # notify upstream and other downstream
         if self._apiClientRegistered():
             self.apiClient.send_notification("router-client-remove", data)
-        for api_server in self.apiServerList:
-            if api_server != api_server:
-                api_server.sproc.send_notification("router-client-remove", data)
+        for obj in self.apiServerList:
+            if obj != api_server:
+                obj.sproc.send_notification("router-client-remove", data)
 
     def _clientAddOrChange(self, type, source_id, ip_data_dict):
         assert len(ip_data_dict) > 0
@@ -758,8 +758,12 @@ class ApiServerEndPoint:
 
     def close(self):
         self.pObj.param.manager_caller.call("on_cascade_downstream_down", self)
-        _Helper.logRouterRemoveAll(self.router_info, self.pObj.logger)
-        self.pObj.apiServerList.remove(self)
+        try:
+            self.pObj.apiServerList.remove(self)
+        except ValueError:
+            pass
+        if self.router_info is not None:
+            _Helper.logRouterRemoveAll(self.router_info, self.pObj.logger)
 
     def on_notification_router_add(self, data):
         uuid = self._routerIdDuplicityCheck(data)
