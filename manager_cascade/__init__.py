@@ -160,7 +160,8 @@ class _PluginObject:
     def on_wvpn_up(self):
         # check vpn prefix
         vpnPrefixList = [util.ipMaskToPrefix(self.vpnPlugin.get_local_ip(), self.vpnPlugin.get_netmask())]
-        if util.prefixListConflict(vpnPrefixList, self.param.managers["wan"].wanConnPlugin.get_prefix_list()):
+        wanPrefixList = [util.ipMaskToPrefix(self.param.managers["wan"].wanConnPlugin.get_ip(), self.param.managers["wan"].wanConnPlugin.get_netmask())] + self.param.managers["wan"].wanConnPlugin.get_extra_prefix_list()
+        if util.prefixListConflict(vpnPrefixList, wanPrefixList):
             raise Exception("cascade-VPN prefix duplicates with internet connection")
         if self.param.prefix_pool.setExcludePrefixList("vpn", vpnPrefixList):
             os.kill(os.getpid(), signal.SIGHUP)
@@ -447,7 +448,7 @@ class _PluginObject:
 
     def _wanConnectionChange(self):
         # process by myself
-        if self.param.managers["wan"].is_connected():
+        if self.param.managers["wan"].wanConnPlugin.is_connected():
             self.routerInfo[self.param.uuid]["wan-connection"] = {
                 "main": {
                     "ip": self.param.managers["wan"].wanConnPlugin.get_ip(),
@@ -541,7 +542,12 @@ class _PluginObject:
             tlist = list(self.routesDict[gateway_ip][router_id])
             for prefix in tlist:
                 if prefix not in prefix_list:
-                    ipp.route("del", dst=self.__prefixConvert(prefix))
+                    try:
+                        ipp.route("del", dst=self.__prefixConvert(prefix))
+                    except pyroute2.netlink.exceptions.NetlinkError as e:
+                        if e[0] == 3 and e[1] == "No such process":
+                            pass        # route does not exist, ignore this error
+                        raise
                     self.routesDict[gateway_ip][router_id].remove(prefix)
             # add routes
             for prefix in prefix_list:
@@ -553,7 +559,12 @@ class _PluginObject:
         if router_id in self.routesDict[gateway_ip]:
             with pyroute2.IPRoute() as ipp:
                 for prefix in self.routesDict[gateway_ip][router_id]:
-                    ipp.route("del", dst=self.__prefixConvert(prefix))
+                    try:
+                        ipp.route("del", dst=self.__prefixConvert(prefix))
+                    except pyroute2.netlink.exceptions.NetlinkError as e:
+                        if e[0] == 3 and e[1] == "No such process":
+                            pass        # route does not exist, ignore this error
+                        raise
                 del self.routesDict[gateway_ip][router_id]
 
     def __prefixConvert(self, prefix):
@@ -909,7 +920,7 @@ class _Helper:
     def protocolWanConnectionToPrefixList(wanConn):
         ret = []
         for conn in wanConn.values():
-            ret.append((conn["ip"], conn["netmask"]))
+            ret.append(util.ipMaskToPrefix(conn["ip"], conn["netmask"]))
             if "extra-prefix-list" in conn:
                 for prefix in conn["extra-prefix-list"]:
                     tlist = prefix.split("/")
