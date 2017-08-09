@@ -189,6 +189,9 @@ class _PluginObject:
         for ip in ip_list:
             if ip in self.router_info[self.param.uuid]["client-list"]:
                 del self.router_info[self.param.uuid]["client-list"][ip]
+        for api_server in self.apiServerList:
+            if api_server.peer_ip in ip_list:
+                api_server.close()
 
         # notify upstream
         if self._apiClientConnected():
@@ -712,6 +715,8 @@ class ApiServerEndPointFactory:
 
     def new_endpoint(self, channel, local_ip, local_port, peer_ip, peer_port, sproc):
         assert channel == "cascade"
+        if peer_ip not in self.router_info[self.pObj.param.uuid]["client-list"]:
+            raise Exception("invalid client IP address")
         for api_server in self.pObj.apiServerList:
             if api_server.peer_ip == peer_ip:
                 raise Exception("multiple channel per IP address")
