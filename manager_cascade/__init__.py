@@ -189,9 +189,6 @@ class _PluginObject:
         for ip in ip_list:
             if ip in self.router_info[self.param.uuid]["client-list"]:
                 del self.router_info[self.param.uuid]["client-list"][ip]
-        for api_server in self.apiServerList:
-            if api_server.peer_ip in ip_list:
-                api_server.close()
 
         # notify upstream
         if self._apiClientConnected():
@@ -623,17 +620,15 @@ class ApiClient(msghole.EndPoint):
         raise Exception(reason)
 
     def on_error(self, excp):
-        if not self.bRegistered:
-            self.pObj.logger.error("Failed to establish CASCADE-API connection.", exc_info=True)      # fixme
-            self.pObj.param.manager_caller.call("on_cascade_upstream_fail", self, excp)
-        else:
+        if self.bRegistered:
             self.pObj.logger.error("CASCADE-API connection disconnected with error.", exc_info=True)  # fixme
             self.pObj.param.manager_caller.call("on_cascade_upstream_error", self, excp)
+        else:
+            self.pObj.logger.error("Failed to establish CASCADE-API connection.", exc_info=True)      # fixme
+            self.pObj.param.manager_caller.call("on_cascade_upstream_fail", self, excp)
 
     def on_close(self):
-        if not self.bRegistered:
-            pass
-        else:
+        if self.bRegistered:
             self.pObj.param.manager_caller.call("on_cascade_upstream_down", self)
             _Helper.logRouterRemoveAll(self.router_info, self.pObj.logger)
 
