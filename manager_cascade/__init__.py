@@ -26,17 +26,21 @@ def get_plugin(name):
 
 class _PluginObject:
 
+    @property
+    def init_after(self):
+        return ["apiserver"]
+
     def init2(self, cfg, tmpDir, varDir, data):
-        self.cascadeApiPort = 2221
         self.param = data
         self.logger = logging.getLogger(self.__module__ + "." + self.__class__.__name__)
 
-        self.router_info = dict()
-
         self.vpnPlugin = None
+
+        self.router_info = dict()
 
         self.routesDict = dict()            # dict<gateway-ip, dict<router-id, list<prefix>>>
 
+        self.apiPort = 2223
         self.apiClient = None
 
         self.apiServerList = []
