@@ -593,7 +593,7 @@ class _ApiClient(msghole.EndPoint):
             data["my-id"] = self.pObj.param.uuid
             data["router-list"] = dict()
             data["router-list"].update(self.pObj.router_info)
-            for sproc in self.pObj.getAllApiServerProcessors():
+            for sproc in self.pObj._getApiServerProcessors():
                 data["router-list"].update(sproc.router_info)
                 data["router-list"][sproc.peer_uuid]["parent"] = self.pObj.param.uuid
             super().exec_command("register", data, self._on_register_return, self._on_register_error)
@@ -615,7 +615,7 @@ class _ApiClient(msghole.EndPoint):
     def _on_register_error(self, reason):
         m = re.match("UUID (.*) duplicate", reason)
         if m is not None:
-            for sproc in self.pObj.getAllApiServerProcessors():
+            for sproc in self.pObj._getApiServerProcessors():
                 if m.group(1) in sproc.router_info:
                     self.pObj.banUuidList.append(m.group(1))
                     sproc.close()
@@ -699,7 +699,7 @@ class _ApiClient(msghole.EndPoint):
     def _routerIdDuplicityCheck(self, data):
         if self.pObj.param.uuid in data:
             return (self.pObj.param.uuid, None)
-        for sproc in self.pObj.getAllApiServerProcessors():
+        for sproc in self.pObj._getApiServerProcessors():
             ret = set(sproc.router_info.keys()) & set(data.keys())
             ret = list(ret)
             if len(ret) > 0:
@@ -803,10 +803,10 @@ class _ApiServerProcessor(msghole.EndPoint):
         data2["my-id"] = self.param.uuid
         data2["router-list"] = dict()
         data2["router-list"].update(self.pObj.router_info)
-        if self.pObj.hasValidApiClient():
+        if self.pObj._apiClientRegistered():
             data2["router-list"][self.param.uuid]["parent"] = self.pObj.apiClient.peer_uuid
             data2["router-list"].update(self.pObj.apiClient.router_info)
-        for sproc in self.pObj.getAllApiServerProcessors():
+        for sproc in self.pObj._getApiServerProcessors():
             data2["router-list"].update(sproc.router_info)
             data2["router-list"][sproc.peer_uuid]["parent"] = self.param.uuid
         return_callback(data2)
