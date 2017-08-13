@@ -9,10 +9,6 @@ def ipMaskToPrefix(ip, netmask):
     return (str(netobj.network_address), str(netobj.netmask))
 
 
-def bridgeGetIp(bridge):
-    return str(ipaddress.IPv4Address(bridge.get_prefix()[0]) + 1)
-
-
 def ipMaskToLen(mask):
     """255.255.255.0 -> 24"""
 
