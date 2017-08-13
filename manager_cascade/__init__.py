@@ -877,7 +877,7 @@ class _ApiServerProcessor(msghole.EndPoint):
             ret = list(ret)
             if len(ret) > 0:
                 return ret[0]
-        for sproc in self.pObj.getApiServerProcessors():
+        for sproc in self.pObj._getApiServerProcessors():
             ret = set(sproc.router_info.keys()) & set(data.keys())
             ret = list(ret)
             if len(ret) > 0:
