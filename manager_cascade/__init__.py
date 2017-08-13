@@ -794,7 +794,7 @@ class _ApiServerProcessor(msghole.EndPoint):
             data2["router-list"] = dict()
             if True:
                 data2["router-list"].update(self.pObj.router_info)
-                if self.pObj.hasValidApiClient():
+                if self.pObj._apiClientRegistered():
                     data2["router-list"][self.param.uuid]["parent"] = self.pObj.apiClient.peer_uuid
                     data2["router-list"].update(self.pObj.apiClient.router_info)
                 for sproc in self.pObj.getAllApiServerProcessors():
@@ -874,7 +874,7 @@ class _ApiServerProcessor(msghole.EndPoint):
     def _routerIdDuplicityCheck(self, data):
         if self.param.uuid in data:
             return self.param.uuid
-        if self.pObj.hasValidApiClient():
+        if self.pObj._apiClientRegistered():
             ret = set(self.pObj.apiClient.router_info) & set(data.keys())
             ret = list(ret)
             if len(ret) > 0:
