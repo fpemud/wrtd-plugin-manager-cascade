@@ -81,8 +81,9 @@ class _PluginObject:
             self.router_info[self.param.uuid]["client-list"] = dict()
 
             # api server
-            self.apiServer = _ApiServer(self)
-            self.logger.info("CASCADE-API server started.")
+            if len(self.param.managers["lan"].vpnsPluginList) > 0:
+                self.apiServer = _ApiServer(self)
+                self.logger.info("CASCADE-API server started.")
         except:
             self.dispose()
             raise
@@ -511,6 +512,8 @@ class _PluginObject:
 
     def _getApiServerProcessors(self):
         ret = []
+        if self.apiServer is None:
+            return ret
         for obj in self.apiServer.sprocList:
             if obj.peer_uuid is not None:
                 ret.append(obj)
@@ -518,6 +521,8 @@ class _PluginObject:
 
     def _getApiServerProcessorsExcept(self, sproc):
         ret = []
+        if self.apiServer is None:
+            return ret
         for obj in self.apiServer.sprocList:
             if obj.peer_uuid is not None and obj != sproc:
                 ret.append(obj)
@@ -808,7 +813,7 @@ class _ApiServerProcessor(msghole.EndPoint):
         if self.pObj._apiClientRegistered():
             data2["router-list"][self.param.uuid]["parent"] = self.pObj.apiClient.peer_uuid
             data2["router-list"].update(self.pObj.apiClient.router_info)
-        for sproc in self.pObj._getApiServerProcessors():
+        for sproc in self.pObj._getApiServerProcessorsExcept(self):
             data2["router-list"].update(sproc.router_info)
             data2["router-list"][sproc.peer_uuid]["parent"] = self.param.uuid
         return_callback(data2)
