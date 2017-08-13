@@ -570,8 +570,10 @@ class _ApiClient(msghole.EndPoint):
     def __init__(self, pObj, remote_ip):
         super().__init__()
         self.pObj = pObj
-        self.peer_ip = remote_ip
+        self.param = pObj.param
+        self.logger = pObj.logger
 
+        self.peer_ip = remote_ip
         sc = Gio.SocketClient.new()
         sc.set_family(Gio.SocketFamily.IPV4)
         sc.set_protocol(Gio.SocketProtocol.TCP)
@@ -590,18 +592,18 @@ class _ApiClient(msghole.EndPoint):
 
             # send register command
             data = dict()
-            data["my-id"] = self.pObj.param.uuid
+            data["my-id"] = self.param.uuid
             data["router-list"] = dict()
             data["router-list"].update(self.pObj.router_info)
             for sproc in self.pObj._getApiServerProcessors():
                 data["router-list"].update(sproc.router_info)
-                data["router-list"][sproc.peer_uuid]["parent"] = self.pObj.param.uuid
+                data["router-list"][sproc.peer_uuid]["parent"] = self.param.uuid
             super().exec_command("register", data, self._on_register_return, self._on_register_error)
 
             self.bConnected = True
         except Exception as e:
             self.logger.error("Failed to establish CASCADE-API connection", exc_info=True)   # fixme
-            self.pObj.param.manager_caller.call("on_cascade_upstream_fail", self, e)
+            self.param.manager_caller.call("on_cascade_upstream_fail", self, e)
             self.close()
 
     def _on_register_return(self, data):
@@ -610,7 +612,7 @@ class _ApiClient(msghole.EndPoint):
         self.bRegistered = True
         self.logger.info("CASCADE-API connection established.")
         _Helper.logRouterAdd(self.router_info, self.logger)
-        self.pObj.param.manager_caller.call("on_cascade_upstream_up", self, data)
+        self.param.manager_caller.call("on_cascade_upstream_up", self, data)
 
     def _on_register_error(self, reason):
         m = re.match("UUID (.*) duplicate", reason)
@@ -624,14 +626,14 @@ class _ApiClient(msghole.EndPoint):
     def on_error(self, excp):
         if self.bRegistered:
             self.logger.error("CASCADE-API connection disconnected with error.", exc_info=True)  # fixme
-            self.pObj.param.manager_caller.call("on_cascade_upstream_error", self, excp)
+            self.param.manager_caller.call("on_cascade_upstream_error", self, excp)
         else:
             self.logger.error("Failed to establish CASCADE-API connection.", exc_info=True)      # fixme
-            self.pObj.param.manager_caller.call("on_cascade_upstream_fail", self, excp)
+            self.param.manager_caller.call("on_cascade_upstream_fail", self, excp)
 
     def on_close(self):
         if self.bRegistered:
-            self.pObj.param.manager_caller.call("on_cascade_upstream_down", self)
+            self.param.manager_caller.call("on_cascade_upstream_down", self)
             _Helper.logRouterRemoveAll(self.router_info, self.logger)
 
     def on_notification_router_add(self, data):
@@ -647,11 +649,11 @@ class _ApiClient(msghole.EndPoint):
 
         self.router_info.update(data)
         _Helper.logRouterAdd(data, self.logger)
-        self.pObj.param.manager_caller.call("on_cascade_upstream_router_add", self, data)
+        self.param.manager_caller.call("on_cascade_upstream_router_add", self, data)
 
     def on_notification_router_remove(self, data):
         assert self.bRegistered
-        self.pObj.param.manager_caller.call("on_cascade_upstream_router_remove", self, data)
+        self.param.manager_caller.call("on_cascade_upstream_router_remove", self, data)
         _Helper.logRouterRemove(data, self.router_info, self.logger)
         for router_id in data:
             del self.router_info[router_id]
@@ -660,45 +662,45 @@ class _ApiClient(msghole.EndPoint):
         assert self.bRegistered
         for router_id, item in data.items():
             self.router_info[router_id]["cascade-vpn"] = item["cascade-vpn"]
-        self.pObj.param.manager_caller.call("on_cascade_upstream_router_cascade_vpn_change", self, data)
+        self.param.manager_caller.call("on_cascade_upstream_router_cascade_vpn_change", self, data)
 
     def on_notification_router_wan_connection_change(self, data):
         assert self.bRegistered
         for router_id, item in data.items():
             self.router_info[router_id]["wan-connection"] = item["wan-connection"]
-        self.pObj.param.manager_caller.call("on_cascade_upstream_router_wan_connection_change", self, data)
+        self.param.manager_caller.call("on_cascade_upstream_router_wan_connection_change", self, data)
 
     def on_notification_router_lan_prefix_list_change(self, data):
         assert self.bRegistered
         for router_id, item in data.items():
             self.router_info[router_id]["lan-prefix-list"] = item["lan-prefix-list"]
-        self.pObj.param.manager_caller.call("on_cascade_upstream_router_lan_prefix_list_change", self, data)
+        self.param.manager_caller.call("on_cascade_upstream_router_lan_prefix_list_change", self, data)
 
     def on_notification_router_client_add(self, data):
         assert self.bRegistered
         for router_id, item in data.items():
             self.router_info[router_id]["client-list"].update(item["client-list"])
         _Helper.logRouterClientAdd(data, self.logger)
-        self.pObj.param.manager_caller.call("on_cascade_upstream_router_client_add", self, data)
+        self.param.manager_caller.call("on_cascade_upstream_router_client_add", self, data)
 
     def on_notification_router_client_change(self, data):
         assert self.bRegistered
         for router_id, item in data.items():
             self.router_info[router_id]["client-list"].update(item["client-list"])
         # no log needed for client change
-        self.pObj.param.manager_caller.call("on_cascade_upstream_router_client_change", self, data)
+        self.param.manager_caller.call("on_cascade_upstream_router_client_change", self, data)
 
     def on_notification_router_client_remove(self, data):
         assert self.bRegistered
-        self.pObj.param.manager_caller.call("on_cascade_upstream_router_client_remove", self, data)
+        self.param.manager_caller.call("on_cascade_upstream_router_client_remove", self, data)
         _Helper.logRouterClientRemove(data, self.router_info, self.logger)
         for router_id, item in data.items():
             for ip in item["client-list"]:
                 del self.router_info[router_id]["client-list"][ip]
 
     def _routerIdDuplicityCheck(self, data):
-        if self.pObj.param.uuid in data:
-            return (self.pObj.param.uuid, None)
+        if self.param.uuid in data:
+            return (self.param.uuid, None)
         for sproc in self.pObj._getApiServerProcessors():
             ret = set(sproc.router_info.keys()) & set(data.keys())
             ret = list(ret)
