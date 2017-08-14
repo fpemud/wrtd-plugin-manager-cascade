@@ -790,33 +790,37 @@ class _ApiServerProcessor(msghole.EndPoint):
         self.serverObj.sprocList.remove(self)
 
     def on_command_register(self, data, return_callback, error_callback):
-        # check
-        uuid = self._routerIdDuplicityCheck(data["router-list"])
-        if uuid is not None:
-            self.logger.error("CASCADE-API client %s rejected, UUID %s duplicate." % (self.peer_ip, uuid))
-            error_callback("UUID %s duplicate" % (uuid))
-            self.close()
-            return
+        try:
+            # check
+            uuid = self._routerIdDuplicityCheck(data["router-list"])
+            if uuid is not None:
+                self.logger.error("CASCADE-API client %s rejected, UUID %s duplicate." % (self.peer_ip, uuid))
+                error_callback("UUID %s duplicate" % (uuid))
+                self.close()
+                return
 
-        # process
-        self.peer_uuid = data["my-id"]
-        self.router_info = data["router-list"]
-        self.logger.info("CASCADE-API client %s registered." % (self.peer_ip))
-        _Helper.logRouterAdd(self.router_info, self.logger)
-        self.param.manager_caller.call("on_cascade_downstream_up", self, data)
+            # process
+            self.peer_uuid = data["my-id"]
+            self.router_info = data["router-list"]
+            self.logger.info("CASCADE-API client %s registered." % (self.peer_ip))
+            _Helper.logRouterAdd(self.router_info, self.logger)
+            self.param.manager_caller.call("on_cascade_downstream_up", self, data)
 
-        # send reply
-        data2 = dict()
-        data2["my-id"] = self.param.uuid
-        data2["router-list"] = dict()
-        data2["router-list"].update(self.pObj.router_info)
-        if self.pObj._apiClientRegistered():
-            data2["router-list"][self.param.uuid]["parent"] = self.pObj.apiClient.peer_uuid
-            data2["router-list"].update(self.pObj.apiClient.router_info)
-        for sproc in self.pObj._getApiServerProcessorsExcept(self):
-            data2["router-list"].update(sproc.router_info)
-            data2["router-list"][sproc.peer_uuid]["parent"] = self.param.uuid
-        return_callback(data2)
+            # send reply
+            data2 = dict()
+            data2["my-id"] = self.param.uuid
+            data2["router-list"] = dict()
+            data2["router-list"].update(self.pObj.router_info)
+            if self.pObj._apiClientRegistered():
+                data2["router-list"][self.param.uuid]["parent"] = self.pObj.apiClient.peer_uuid
+                data2["router-list"].update(self.pObj.apiClient.router_info)
+            for sproc in self.pObj._getApiServerProcessorsExcept(self):
+                data2["router-list"].update(sproc.router_info)
+                data2["router-list"][sproc.peer_uuid]["parent"] = self.param.uuid
+            return_callback(data2)
+        except:
+            error_callback("internal error")
+            raise
 
     def on_notification_router_add(self, data):
         assert self.peer_uuid is not None
