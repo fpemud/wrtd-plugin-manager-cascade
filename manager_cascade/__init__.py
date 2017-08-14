@@ -458,27 +458,27 @@ class _PluginObject:
 
     def _bridgeAddSource(self, source_id):
         for bridge in [self.param.managers["lan"].defaultBridge] + [x.get_bridge() for x in self.param.managers["lan"].vpnsPluginList]:
-            bridge.on_source_add(source_id)
+            bridge.add_source(source_id)
 
     def _bridgeRemoveSource(self, source_id):
         for bridge in [self.param.managers["lan"].defaultBridge] + [x.get_bridge() for x in self.param.managers["lan"].vpnsPluginList]:
-            bridge.on_source_remove(source_id)
+            bridge.remove_source(source_id)
 
     def _bridgeAddHost(self, source_id, ip_data_dict):
         for bridge in [self.param.managers["lan"].defaultBridge] + [x.get_bridge() for x in self.param.managers["lan"].vpnsPluginList]:
-            bridge.on_host_add(source_id, ip_data_dict)
+            bridge.add_host(source_id, ip_data_dict)
 
     def _bridgeChangeHost(self, source_id, ip_data_dict):
         for bridge in [self.param.managers["lan"].defaultBridge] + [x.get_bridge() for x in self.param.managers["lan"].vpnsPluginList]:
-            bridge.on_host_change(source_id, ip_data_dict)
+            bridge.change_host(source_id, ip_data_dict)
 
     def _bridgeRemoveHost(self, source_id, ip_list):
         for bridge in [self.param.managers["lan"].defaultBridge] + [x.get_bridge() for x in self.param.managers["lan"].vpnsPluginList]:
-            bridge.on_host_remove(source_id, ip_list)
+            bridge.remove_host(source_id, ip_list)
 
     def _bridgeRefreshHost(self, source_id, ip_list):
         for bridge in [self.param.managers["lan"].defaultBridge] + [x.get_bridge() for x in self.param.managers["lan"].vpnsPluginList]:
-            bridge.on_host_refresh(source_id, ip_list)
+            bridge.refresh_host(source_id, ip_list)
 
     def _downstreamWanPrefixListCheck(self, data):
         # check downstream wan-prefix and restart if neccessary
