@@ -327,7 +327,7 @@ class _PluginObject:
             if "lan-prefix-list" in data[router_id]:
                 self._updateRoutes(sproc.peer_ip, router_id, data[router_id]["lan-prefix-list"])
             if "client-list" in router_info:
-                self.addSource("downstream-" + router_id)
+                self._bridgeAddSource("downstream-" + router_id)
                 if len(router_info["client-list"]) > 0:
                     self._bridgeAddHost("downstream-" + router_id, router_info["client-list"])
 
