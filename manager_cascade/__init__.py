@@ -178,20 +178,14 @@ class _PluginObject:
 
     def on_client_add(self, source_id, ip_data_dict):
         assert len(ip_data_dict) > 0
-        if source_id == "upstream-vpn" or source_id.startswith("downstream-"):
-            return
         self._clientAddOrChange("add", source_id, ip_data_dict)
 
     def on_client_change(self, source_id, ip_data_dict):
         assert len(ip_data_dict) > 0
-        if source_id == "upstream-vpn" or source_id.startswith("downstream-"):
-            return
         self._clientAddOrChange("change", source_id, ip_data_dict)
 
     def on_client_remove(self, source_id, ip_list):
         assert len(ip_list) > 0
-        if source_id == "upstream-vpn" or source_id.startswith("downstream-"):
-            return
 
         # process by myself
         for ip in ip_list:
@@ -215,7 +209,7 @@ class _PluginObject:
     def on_cascade_upstream_up(self, api_client, data):
         self.banUuidList = []
         self.routesDict[api_client.peer_ip] = dict()
-        self.param.managers["lan"].add_source("upstream-vpn")
+        self._bridgeAddSource("upstream-vpn")
         self.on_cascade_upstream_router_add(api_client, data["router-list"])
 
     def on_cascade_upstream_fail(self, api_client, excp):
@@ -224,7 +218,7 @@ class _PluginObject:
     def on_cascade_upstream_down(self, api_client):
         if api_client.router_info is not None and len(api_client.router_info) > 0:
             self.on_cascade_upstream_router_remove(api_client, api_client.router_info.keys())
-        self.param.managers["lan"].remove_source("upstream-vpn")
+        self._bridgeRemoveSource("upstream-vpn")
         if True:
             for router_id in api_client.router_info:
                 self._removeRoutes(api_client.peer_ip, router_id)
@@ -333,9 +327,9 @@ class _PluginObject:
             if "lan-prefix-list" in data[router_id]:
                 self._updateRoutes(sproc.peer_ip, router_id, data[router_id]["lan-prefix-list"])
             if "client-list" in router_info:
-                self.param.managers["lan"].add_source("downstream-" + router_id)
+                self.addSource("downstream-" + router_id)
                 if len(router_info["client-list"]) > 0:
-                    self.param.managers["lan"].add_client("downstream-" + router_id, router_info["client-list"])
+                    self._bridgeAddHost("downstream-" + router_id, router_info["client-list"])
 
         # notify upstream and other downstream
         if self._apiClientRegistered():
@@ -346,7 +340,7 @@ class _PluginObject:
     def on_cascade_downstream_router_remove(self, sproc, data):
         # process by myself
         for router_id in data:
-            self.param.managers["lan"].remove_source("downstream-" + router_id)
+            self._bridgeRemoveSource("downstream-" + router_id)
             self._removeRoutes(sproc.peer_ip, router_id)
             self.param.prefix_pool.removeExcludePrefixList("downstream-wan-%s" % (router_id))
 
@@ -380,7 +374,7 @@ class _PluginObject:
     def on_cascade_downstream_router_client_add(self, sproc, data):
         # process by myself
         for router_id, router_info in data.items():
-            self.param.managers["lan"].add_client("downstream-" + router_id, router_info["client-list"])
+            self._bridgeAddHost("downstream-" + router_id, router_info["client-list"])
 
         # notify upstream and other downstream
         if self._apiClientRegistered():
@@ -391,7 +385,7 @@ class _PluginObject:
     def on_cascade_downstream_router_client_change(self, sproc, data):
         # process by myself
         for router_id, router_info in data.items():
-            self.param.managers["lan"].change_client("downstream-" + router_id, router_info["client-list"])
+            self._bridgeChangeHost("downstream-" + router_id, router_info["client-list"])
 
         # notify upstream and other downstream
         if self._apiClientRegistered():
@@ -402,7 +396,7 @@ class _PluginObject:
     def on_cascade_downstream_router_client_remove(self, sproc, data):
         # process by myself
         for router_id, router_info in data.items():
-            self.param.managers["lan"].remove_client("downstream-" + router_id, router_info["client-list"])
+            self._bridgeRemoveHost("downstream-" + router_id, router_info["client-list"])
 
         # notify upstream and other downstream
         if self._apiClientRegistered():
@@ -462,6 +456,30 @@ class _PluginObject:
                 tlist = data[router_id]["lan-prefix-list"]
             self._updateRoutes(api_client.peer_ip, router_id, tlist)
 
+    def _bridgeAddSource(self, source_id):
+        for bridge in [self.param.managers["lan"].defaultBridge] + [x.get_bridge() for x in self.param.managers["lan"].vpnsPluginList]:
+            bridge.on_source_add(source_id)
+
+    def _bridgeRemoveSource(self, source_id):
+        for bridge in [self.param.managers["lan"].defaultBridge] + [x.get_bridge() for x in self.param.managers["lan"].vpnsPluginList]:
+            bridge.on_source_remove(source_id)
+
+    def _bridgeAddHost(self, source_id, ip_data_dict):
+        for bridge in [self.param.managers["lan"].defaultBridge] + [x.get_bridge() for x in self.param.managers["lan"].vpnsPluginList]:
+            bridge.on_host_add(source_id, ip_data_dict)
+
+    def _bridgeChangeHost(self, source_id, ip_data_dict):
+        for bridge in [self.param.managers["lan"].defaultBridge] + [x.get_bridge() for x in self.param.managers["lan"].vpnsPluginList]:
+            bridge.on_host_change(source_id, ip_data_dict)
+
+    def _bridgeRemoveHost(self, source_id, ip_list):
+        for bridge in [self.param.managers["lan"].defaultBridge] + [x.get_bridge() for x in self.param.managers["lan"].vpnsPluginList]:
+            bridge.on_host_remove(source_id, ip_list)
+
+    def _bridgeRefreshHost(self, source_id, ip_list):
+        for bridge in [self.param.managers["lan"].defaultBridge] + [x.get_bridge() for x in self.param.managers["lan"].vpnsPluginList]:
+            bridge.on_host_refresh(source_id, ip_list)
+
     def _downstreamWanPrefixListCheck(self, data):
         # check downstream wan-prefix and restart if neccessary
         show_router_id = None
@@ -508,7 +526,7 @@ class _PluginObject:
                     ipDataDict[ip] = data
 
         # refresh to all bridges
-        self.param.managers["lan"].refresh_client("upstream-vpn", ipDataDict)
+        self._bridgeRefreshHost("upstream-vpn", ipDataDict)
 
     def _apiClientRegistered(self):
         return self.apiClient is not None and self.apiClient.bRegistered
