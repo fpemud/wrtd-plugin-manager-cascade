@@ -177,13 +177,21 @@ class _PluginObject:
             sproc.send_notification("router-cascade-vpn-change", data)
 
     def on_client_add(self, source_id, ip_data_dict):
+        assert len(ip_data_dict) > 0
+        if source_id == "upstream-vpn" or source_id.startswith("downstream-"):
+            return
         self._clientAddOrChange("add", source_id, ip_data_dict)
 
     def on_client_change(self, source_id, ip_data_dict):
+        assert len(ip_data_dict) > 0
+        if source_id == "upstream-vpn" or source_id.startswith("downstream-"):
+            return
         self._clientAddOrChange("change", source_id, ip_data_dict)
 
     def on_client_remove(self, source_id, ip_list):
         assert len(ip_list) > 0
+        if source_id == "upstream-vpn" or source_id.startswith("downstream-"):
+            return
 
         # process by myself
         for ip in ip_list:
@@ -403,8 +411,6 @@ class _PluginObject:
             obj.send_notification("router-client-remove", data)
 
     def _clientAddOrChange(self, type, source_id, ip_data_dict):
-        assert len(ip_data_dict) > 0
-
         # process by myself
         self.router_info[self.param.uuid]["client-list"].update(ip_data_dict)
 
