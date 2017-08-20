@@ -1,0 +1,8 @@
+VPN is only a technical method, the importance is the service provided.
+
+There's 2 methods for the client to use VPN:
+1. ALL: Client make the default route point to VPN, and use VPN's name server.
+        So that client can use all the service provided by VPN.
+3. CASCADE: Don't use VPN's default route and name server.
+            Get information from CASCADE-API, add route for all the lan-prefixes, add dnsmasq entry or /etc/hosts entry for all the CASCADE-clients
+            So that client can join the VPN, and choose which service to use on its own.
