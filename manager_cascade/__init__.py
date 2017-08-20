@@ -58,10 +58,7 @@ class _PluginObject:
                 self.vpnPlugin = self.param.plugin_hub.getPlugin("wvpn", cfgObj["plugin"])
                 tdir = os.path.join(self.param.tmpDir, "wvpn-%s" % (cfgObj["plugin"]))
                 os.mkdir(tdir)
-                self.vpnPlugin.init2(cfgObj,
-                                     tdir,
-                                     lambda: self.param.manager_caller.call("on_wvpn_up"),
-                                     lambda: self.param.manager_caller.call("on_wvpn_down"))
+                self.vpnPlugin.init2(cfgObj, tdir, self._wvpnUp, self._wvpnDown)
                 self.logger.info("CASCADE-VPN activated, plugin: %s." % (cfgObj["plugin"]))
             else:
                 self.logger.info("No CASCADE-VPN configured.")
@@ -135,46 +132,6 @@ class _PluginObject:
 
     def on_wan_ipcheck_complete(self, isIpPublic):
         self._wanConnectionChange()
-
-    def on_wvpn_up(self):
-        # check vpn prefix
-        vpnPrefixList = [util.ipMaskToPrefix(self.vpnPlugin.get_local_ip(), self.vpnPlugin.get_netmask())]
-        wanPrefixList = [util.ipMaskToPrefix(self.param.managers["wan"].wanConnPlugin.get_ip(), self.param.managers["wan"].wanConnPlugin.get_netmask())] + self.param.managers["wan"].wanConnPlugin.get_extra_prefix_list()
-        if util.prefixListConflict(vpnPrefixList, wanPrefixList):
-            raise Exception("cascade-VPN prefix duplicates with internet connection")
-        if self.param.prefix_pool.setExcludePrefixList("vpn", vpnPrefixList):
-            os.kill(os.getpid(), signal.SIGHUP)
-            raise Exception("bridge prefix duplicates with CASCADE-VPN connection, autofix it and restart")
-
-        # process by myself
-        self.router_info[self.param.uuid]["cascade-vpn"] = dict()
-        self.router_info[self.param.uuid]["cascade-vpn"]["local-ip"] = self.vpnPlugin.get_local_ip()
-        self.router_info[self.param.uuid]["cascade-vpn"]["remote-ip"] = self.vpnPlugin.get_remote_ip()
-        assert self.apiClient is None
-        self.apiClient = _ApiClient(self, self.vpnPlugin.get_remote_ip())
-
-        # notify downstream
-        data = dict()
-        data[self.param.uuid] = dict()
-        data[self.param.uuid]["cascade-vpn"] = self.router_info[self.param.uuid]["cascade-vpn"]
-        for sproc in self._getApiServerProcessors():
-            sproc.send_notification("router-cascade-vpn-change", data)
-
-    def on_wvpn_down(self):
-        # process by myself
-        if self.apiClient is not None:
-            self.apiClient.close()
-            self.apiClient = None
-        if "cascade-vpn" in self.router_info[self.param.uuid]:
-            self.router_info[self.param.uuid]["cascade-vpn"] = dict()
-        self.param.prefix_pool.removeExcludePrefixList("vpn")
-
-        # notify downstream
-        data = dict()
-        data[self.param.uuid] = dict()
-        data[self.param.uuid]["cascade-vpn"] = self.router_info[self.param.uuid]["cascade-vpn"]
-        for sproc in self._getApiServerProcessors():
-            sproc.send_notification("router-cascade-vpn-change", data)
 
     def on_client_add(self, source_id, ip_data_dict):
         assert len(ip_data_dict) > 0
@@ -403,6 +360,46 @@ class _PluginObject:
             self.apiClient.send_notification("router-client-remove", data)
         for obj in self._getApiServerProcessorsExcept(sproc):
             obj.send_notification("router-client-remove", data)
+
+    def _wvpnUp(self):
+        # check vpn prefix
+        vpnPrefixList = [util.ipMaskToPrefix(self.vpnPlugin.get_local_ip(), self.vpnPlugin.get_netmask())]
+        wanPrefixList = [util.ipMaskToPrefix(self.param.managers["wan"].wanConnPlugin.get_ip(), self.param.managers["wan"].wanConnPlugin.get_netmask())] + self.param.managers["wan"].wanConnPlugin.get_extra_prefix_list()
+        if util.prefixListConflict(vpnPrefixList, wanPrefixList):
+            raise Exception("cascade-VPN prefix duplicates with internet connection")
+        if self.param.prefix_pool.setExcludePrefixList("vpn", vpnPrefixList):
+            os.kill(os.getpid(), signal.SIGHUP)
+            raise Exception("bridge prefix duplicates with CASCADE-VPN connection, autofix it and restart")
+
+        # process by myself
+        self.router_info[self.param.uuid]["cascade-vpn"] = dict()
+        self.router_info[self.param.uuid]["cascade-vpn"]["local-ip"] = self.vpnPlugin.get_local_ip()
+        self.router_info[self.param.uuid]["cascade-vpn"]["remote-ip"] = self.vpnPlugin.get_remote_ip()
+        assert self.apiClient is None
+        self.apiClient = _ApiClient(self, self.vpnPlugin.get_remote_ip())
+
+        # notify downstream
+        data = dict()
+        data[self.param.uuid] = dict()
+        data[self.param.uuid]["cascade-vpn"] = self.router_info[self.param.uuid]["cascade-vpn"]
+        for sproc in self._getApiServerProcessors():
+            sproc.send_notification("router-cascade-vpn-change", data)
+
+    def _wvpnDown(self):
+        # process by myself
+        if self.apiClient is not None:
+            self.apiClient.close()
+            self.apiClient = None
+        if "cascade-vpn" in self.router_info[self.param.uuid]:
+            self.router_info[self.param.uuid]["cascade-vpn"] = dict()
+        self.param.prefix_pool.removeExcludePrefixList("vpn")
+
+        # notify downstream
+        data = dict()
+        data[self.param.uuid] = dict()
+        data[self.param.uuid]["cascade-vpn"] = self.router_info[self.param.uuid]["cascade-vpn"]
+        for sproc in self._getApiServerProcessors():
+            sproc.send_notification("router-cascade-vpn-change", data)
 
     def _clientAddOrChange(self, type, source_id, ip_data_dict):
         # process by myself
