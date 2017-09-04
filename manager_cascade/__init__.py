@@ -88,10 +88,10 @@ class _PluginObject:
 
     def dispose(self):
         if self.apiServer is not None:
-            self.apiServer.close()
+            self.apiServer.dispose()
             self.logger.info("CASCADE-API server stopped.")
         if self.apiClient is not None:
-            self.apiClient.close(immediate=True)
+            self.apiClient.dispose()
         if self.vpnPlugin is not None:
             self.vpnPlugin.stop()
             self.logger.info("CASCADE-VPN deactivated.")
@@ -389,7 +389,7 @@ class _PluginObject:
     def _wvpnDown(self):
         # process by myself
         if self.apiClient is not None:
-            self.apiClient.close(immediate=True)
+            self.apiClient.dispose()
             self.apiClient = None
         if "cascade-vpn" in self.router_info[self.param.uuid]:
             self.router_info[self.param.uuid]["cascade-vpn"] = dict()
@@ -612,6 +612,10 @@ class _ApiClient(msghole.EndPoint):
         self.bRegistered = False
         sc.connect_to_host_async(self.peer_ip, self.pObj.apiPort, None, self._on_connect)
 
+    def dispose(self):
+        if self.iostream is not None:
+            self.close(immediate=True)
+
     def _on_connect(self, source_object, res):
         try:
             conn = source_object.connect_to_host_finish(res)
@@ -801,7 +805,7 @@ class _ApiServer:
 
         self.sprocList = []
 
-    def close(self):
+    def dispose(self):
         self.serverListener.close()
         for sproc in self.sprocList:
             sproc.close(immediate=True)
