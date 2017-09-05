@@ -621,7 +621,7 @@ class _ApiClient(msghole.EndPoint):
             conn = source_object.connect_to_host_finish(res)
             super().set_iostream_and_start(conn)
         except:
-            self._errFail()
+            self._excpFail()
             return
 
         try:
@@ -637,42 +637,34 @@ class _ApiClient(msghole.EndPoint):
 
             self.bConnected = True
         except:
-            self._errFail()
+            self._excpFail()
             self.close(immediate=True)
 
     def _on_register_return(self, data):
+        self.peer_uuid = data["my-id"]
+        self.router_info = data["router-list"]
+        self.logger.info("CASCADE-API connection established.")
+        self.bRegistered = True
+        _Helper.logRouterAdd(self.router_info, self.logger)
         try:
-            self.peer_uuid = data["my-id"]
-            self.router_info = data["router-list"]
-            self.logger.info("CASCADE-API connection established.")
-            self.bRegistered = True
-            _Helper.logRouterAdd(self.router_info, self.logger)
             self.param.manager_caller.call("on_cascade_upstream_up", self, data)
         except msghole.BusinessException as e:
-            if not self.bRegistered:
-                self._errFail()
-            else:
-                self._errError(e)
-            self.close()
+            self._errFail(str(e))
 
     def _on_register_error(self, reason):
-        try:
-            m = re.match("UUID (.*) duplicate", reason)
-            if m is not None:
-                for sproc in self.pObj._getApiServerProcessors():
-                    if m.group(1) in sproc.router_info:
-                        self.pObj.banUuidList.append(m.group(1))
-                        sproc.close(immediate=True)
-            raise msghole.BusinessException(reason)
-        except msghole.BusinessException as e:
-            self._errFail()
-            self.close()
+        m = re.match("UUID (.*) duplicate", reason)
+        if m is not None:
+            for sproc in self.pObj._getApiServerProcessors():
+                if m.group(1) in sproc.router_info:
+                    self.pObj.banUuidList.append(m.group(1))
+                    sproc.close(immediate=True)
+        self._errFail(reason)
 
     def on_error(self, excp):
         if not self.bRegistered:
-            self._errFail()
+            self._excpFail()
         else:
-            self._errError(excp)
+            self._excpError(excp)
 
     def on_close(self):
         if self.bRegistered:
@@ -695,7 +687,6 @@ class _ApiClient(msghole.EndPoint):
             self.param.manager_caller.call("on_cascade_upstream_router_add", self, data)
         except msghole.BusinessException as e:
             self._errError(e)
-            self.close()
 
     def on_notification_router_remove(self, data):
         assert self.bRegistered
@@ -706,7 +697,6 @@ class _ApiClient(msghole.EndPoint):
                 del self.router_info[router_id]
         except msghole.BusinessException as e:
             self._errError(e)
-            self.close()
 
     def on_notification_router_cascade_vpn_change(self, data):
         assert self.bRegistered
@@ -716,7 +706,6 @@ class _ApiClient(msghole.EndPoint):
             self.param.manager_caller.call("on_cascade_upstream_router_cascade_vpn_change", self, data)
         except msghole.BusinessException as e:
             self._errError(e)
-            self.close()
 
     def on_notification_router_wan_connection_change(self, data):
         assert self.bRegistered
@@ -726,7 +715,6 @@ class _ApiClient(msghole.EndPoint):
             self.param.manager_caller.call("on_cascade_upstream_router_wan_connection_change", self, data)
         except msghole.BusinessException as e:
             self._errError(e)
-            self.close()
 
     def on_notification_router_lan_prefix_list_change(self, data):
         assert self.bRegistered
@@ -736,7 +724,6 @@ class _ApiClient(msghole.EndPoint):
             self.param.manager_caller.call("on_cascade_upstream_router_lan_prefix_list_change", self, data)
         except msghole.BusinessException as e:
             self._errError(e)
-            self.close()
 
     def on_notification_router_client_add(self, data):
         assert self.bRegistered
@@ -747,7 +734,6 @@ class _ApiClient(msghole.EndPoint):
             self.param.manager_caller.call("on_cascade_upstream_router_client_add", self, data)
         except msghole.BusinessException as e:
             self._errError(e)
-            self.close()
 
     def on_notification_router_client_change(self, data):
         assert self.bRegistered
@@ -758,7 +744,6 @@ class _ApiClient(msghole.EndPoint):
             self.param.manager_caller.call("on_cascade_upstream_router_client_change", self, data)
         except msghole.BusinessException as e:
             self._errError(e)
-            self.close()
 
     def on_notification_router_client_remove(self, data):
         assert self.bRegistered
@@ -770,13 +755,22 @@ class _ApiClient(msghole.EndPoint):
                     del self.router_info[router_id]["client-list"][ip]
         except msghole.BusinessException as e:
             self._errError(e)
-            self.close()
 
-    def _errFail(self):
+    def _errFail(self, reason):
+        self.logger.error("Failed to establish CASCADE-API connection, %s." % (reason))
+        self.param.manager_caller.call("on_cascade_upstream_fail", self)
+        self.close()
+
+    def _errError(self, excp):
+        self.logger.error("CASCADE-API connection disconnected with error, %s." % (str(excp)))
+        self.param.manager_caller.call("on_cascade_upstream_error", self, excp)
+        self.close()
+
+    def _excpFail(self):
         self.logger.error("Failed to establish CASCADE-API connection.", exc_info=True)      # fixme
         self.param.manager_caller.call("on_cascade_upstream_fail", self)
 
-    def _errError(self, excp):
+    def _excpError(self, excp):
         self.logger.error("CASCADE-API connection disconnected with error.", exc_info=True)  # fixme
         self.param.manager_caller.call("on_cascade_upstream_error", self, excp)
 
