@@ -855,6 +855,8 @@ class _ApiServerProcessor(msghole.EndPoint):
         super().set_iostream_and_start(conn)
 
     def on_error(self, e):
+        if isinstance(e, msghole.PeerCloseError):
+            return
         self.logger.error("Error occured in server processor for client \"%s\"" % (self.peer_ip), exc_info=True)
 
     def on_close(self):
